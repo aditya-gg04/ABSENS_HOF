@@ -21,6 +21,7 @@ export default function MyReportsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const user = useSelector((state: any) => state.auth.user)
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -30,7 +31,7 @@ export default function MyReportsPage() {
       }
 
       try {
-        const response = await fetch("http://localhost:5000/api/v1/sightings/user", {
+        const response = await fetch(`${API_URL}/sightings/user`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },

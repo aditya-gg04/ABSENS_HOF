@@ -19,6 +19,7 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const dispatch = useDispatch() // Add this
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,7 +27,7 @@ export default function SignupPage() {
     setError("")
 
     try {
-      const response = await fetch("http://localhost:5000/api/v1/user/register", {
+      const response = await fetch(`${API_URL}/user/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fullname: fullName, email, password }),

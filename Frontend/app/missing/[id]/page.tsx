@@ -23,6 +23,7 @@ export default function MissingPersonDetailPage() {
   const { id } = useParams(); // Get the missing person ID from the URL
   const [person, setPerson] = useState<MissingPerson | null>(null);
   const [loading, setLoading] = useState(true);
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   useEffect(() => {
     if (id) {
@@ -33,7 +34,7 @@ export default function MissingPersonDetailPage() {
       }
       const fetchPerson = async () => {
         try {
-          const response = await fetch(`http://localhost:5000/api/v1/missing-persons/${id}`, {
+          const response = await fetch(`${API_URL}/missing-persons/${id}`, {
             headers: {
               Authorization: `Bearer ${accessToken}`,
             },

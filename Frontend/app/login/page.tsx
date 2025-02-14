@@ -20,7 +20,7 @@ export default function LoginPage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const user = useSelector((state: { auth: { user: any } }) => state.auth.user);
-
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   // Redirect to dashboard if the user is already logged in.
   useEffect(() => {
     if (user) {
@@ -35,7 +35,7 @@ export default function LoginPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/v1/user/login`,
+        `${API_URL}/user/login`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

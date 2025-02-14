@@ -59,13 +59,14 @@ export default function FindPage() {
     reportData.append("missingDate", formData.missingDate)
     reportData.append("lastSeenLocation", formData.lastSeenLocation)
     reportData.append("description", formData.description)
+    const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
     selectedFiles.forEach((file) => {
       reportData.append("photos", file)
     })
 
     try {
-      const response = await fetch("http://localhost:5000/api/v1/missing-persons/", {
+      const response = await fetch(`${API_URL}/missing-persons/`, {
         method: "POST",
         body: reportData,
         headers: {

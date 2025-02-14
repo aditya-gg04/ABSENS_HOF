@@ -24,7 +24,7 @@ export default function MyMissingPersonsPage() {
   const router = useRouter();
   const user = useSelector((state: any) => state.auth.user);
   const dispatch = useDispatch();
-
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   useEffect(() => {
     const fetchMissingPersons = async () => {
       if (!user) {
@@ -33,7 +33,7 @@ export default function MyMissingPersonsPage() {
       }
 
       try {
-        const response = await fetch("http://localhost:5000/api/v1/missing-persons/user", {
+        const response = await fetch(`${API_URL}/missing-persons/user`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },

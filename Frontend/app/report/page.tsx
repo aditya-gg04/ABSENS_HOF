@@ -37,6 +37,7 @@ export default function ReportPage() {
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   // Fetch access token from localStorage
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function ReportPage() {
         formData.append("photos", file)
       })
 
-      const response = await fetch("http://localhost:5000/api/v1/sightings", {
+      const response = await fetch(`${API_URL}/sightings`, {
         method: "POST",
         headers: {
           Authorization: accessToken ? `Bearer ${accessToken}` : "",

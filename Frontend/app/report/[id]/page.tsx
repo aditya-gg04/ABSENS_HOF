@@ -22,6 +22,7 @@ export default function ReportDetailPage() {
   const { id } = useParams(); // Retrieve the report ID from the URL
   const [report, setReport] = useState<ReportedCase | null>(null);
   const [loading, setLoading] = useState(true);
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   useEffect(() => {
     if (localStorage.getItem("user") === null) {
@@ -31,7 +32,7 @@ export default function ReportDetailPage() {
     if (id) {
       const fetchReport = async () => {
         try {
-          const response = await fetch(`http://localhost:5000/api/v1/sightings/${id}`, {
+          const response = await fetch(`${API_URL}/sightings/${id}`, {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
             },
