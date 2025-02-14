@@ -72,6 +72,22 @@ export const getSightingReports = async (req, res) => {
 
 export const getSightingReportById = async (req, res) => {
     try {
+        const report = await SightingReport.findById(req.params.id);
+
+        if (!report) {
+            return ApiResponse.error(res, {statusCode: 404, message: 'Report not found'});
+        }
+
+        return ApiResponse.success(res,{statusCode: 200, message: 'Sighting report', data: report});
+
+    } catch (error) {
+        console.error('Get report error:', error);
+        return ApiResponse.error(res, {statusCode: 500, message: 'Server Error'});
+    }
+};
+
+export const getSightingReportByIds = async (req, res) => {
+    try {
         const { sightingReportIds } = req.body; // Expecting an array of sighting report IDs
 
         if (!sightingReportIds || !Array.isArray(sightingReportIds)) {
@@ -105,6 +121,19 @@ export const getSightingReportById = async (req, res) => {
     } catch (error) {
         console.error('Get report error:', error);
         return ApiResponse.error(res, 500, 'Server Error');
+    }
+};
+
+export const getSightingReportsByUserId = async (req, res) => {
+    try {
+        const reports = await SightingReport.find({
+            reportedBy: req.user.id,
+        }).sort({ timestamp: -1 });
+
+        return ApiResponse.success(res, {statusCode: 200, message: 'Sighting reports retrieved successfully', data: reports});
+    } catch (error) {
+        console.error('Get reports error:', error);
+        return ApiResponse.error(res, {statusCode: 500, message: 'Server Error'});
     }
 };
 

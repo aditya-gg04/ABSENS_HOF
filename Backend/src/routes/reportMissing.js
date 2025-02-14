@@ -4,7 +4,8 @@ import {
   createSightingReport,
   getSightingReports,
   getSightingReportById,
-  updateSightingStatus
+  updateSightingStatus,
+  getSightingReportsByUserId,
 } from '../controllers/reportMissing.js';
 import upload from '../middlewares/upload.js';
 
@@ -21,8 +22,14 @@ router.post(
 // GET /api/v1/sightings
 router.get('/', verifyToken, getSightingReports);
 
+// GET /api/v1/sightings/user
+router.get('/user', verifyToken, getSightingReportsByUserId);
+
+
 // POST /api/v1/sightings/matches
 router.post('/matches', verifyToken, getSightingReportById);
+
+router.get('/:id', verifyToken, getSightingReportById);
 
 // PUT /api/v1/sightings/:id/status
 router.put(
