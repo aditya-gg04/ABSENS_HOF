@@ -86,9 +86,14 @@ async def store_user_images(user_id: str = Form(...), image_urls: List[str] = Fo
     try:
         # check if user_id already exists in the index with namespace "unconfirmed"
         query_response = index.query(vector=final_embedding_list, top_k=1, namespace="unconfirmed", include_metadata=True)
-        matches = query_response["matches"]
-        if matches and matches[0]["score"] > 0.8:
-            return {"message": "User already exists in unconfirmed namespace", "user_id": user_id}
+        match_unconfirmed = query_response["matches"]
+        if match_unconfirmed and match_unconfirmed[0]["score"] > 0.8:
+            return {"message": "User already exists in unconfirmed namespace", "user_id": user_id, "similarity_score": match_unconfirmed[0]["score"]}
+        
+        matches_reported = index.query(vector=final_embedding_list, top_k=1, namespace="reported", include_metadata=True)["matches"]
+        if matches_reported and matches_reported[0]["score"] > 0.8:
+            return {"message": "User already exists in reported namespace", "user_id": user_id, "similarity_score": matches_reported[0]["score"]}, 
+        
         
         index.upsert([(user_id, final_embedding_list)], namespace="reported")
         return {
