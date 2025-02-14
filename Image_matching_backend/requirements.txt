@@ -1,7 +1,7 @@
 uvicorn==0.34.0
 virtualenv==20.29.1
 fastapi==0.115.7
-pyhton-dotenv==1.0.1
+python-dotenv==1.0.1
 numpy==1.26.2
 pinecone-client==5.0.1
 pinecone-plugin-inference==1.1.0
