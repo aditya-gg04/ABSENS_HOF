@@ -1,16 +1,17 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Upload, Camera, X } from "lucide-react";
-import Image from "next/image";
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Upload, X } from "lucide-react"
+import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 export default function FindPage() {
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const router = useRouter()
+  const [previewUrls, setPreviewUrls] = useState<string[]>([])
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -20,48 +21,48 @@ export default function FindPage() {
     lastSeenLocation: "",
     missingDate: "",
     description: "",
-  });
+  })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
-  };
+    setFormData({ ...formData, [e.target.id]: e.target.value })
+  }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+    const files = e.target.files
     if (files) {
-      const newFiles = Array.from(files);
-      setSelectedFiles([...selectedFiles, ...newFiles]);
-      const newUrls = newFiles.map((file) => URL.createObjectURL(file));
-      setPreviewUrls([...previewUrls, ...newUrls]);
+      const newFiles = Array.from(files)
+      setSelectedFiles([...selectedFiles, ...newFiles])
+      const newUrls = newFiles.map((file) => URL.createObjectURL(file))
+      setPreviewUrls([...previewUrls, ...newUrls])
     }
-  };
+  }
 
   const handleRemoveImage = (index: number) => {
-    setPreviewUrls(previewUrls.filter((_, i) => i !== index));
-    setSelectedFiles(selectedFiles.filter((_, i) => i !== index));
-  };
+    setPreviewUrls(previewUrls.filter((_, i) => i !== index))
+    setSelectedFiles(selectedFiles.filter((_, i) => i !== index))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    const accessToken = localStorage.getItem("accessToken");
+    const accessToken = localStorage.getItem("accessToken")
 
     if (!accessToken) {
-      alert("You must be logged in to submit a report.");
-      return;
+      alert("You must be logged in to submit a report.")
+      return
     }
 
-    const reportData = new FormData();
-    reportData.append("name", `${formData.firstName} ${formData.lastName}`);
-    reportData.append("age", formData.age);
-    reportData.append("gender", formData.gender);
-    reportData.append("missingDate", formData.missingDate);
-    reportData.append("lastSeenLocation", formData.lastSeenLocation);
-    reportData.append("description", formData.description);
+    const reportData = new FormData()
+    reportData.append("name", `${formData.firstName} ${formData.lastName}`)
+    reportData.append("age", formData.age)
+    reportData.append("gender", formData.gender)
+    reportData.append("missingDate", formData.missingDate)
+    reportData.append("lastSeenLocation", formData.lastSeenLocation)
+    reportData.append("description", formData.description)
 
     selectedFiles.forEach((file) => {
-      reportData.append("photos", file);
-    });
+      reportData.append("photos", file)
+    })
 
     try {
       const response = await fetch("http://localhost:5000/api/v1/missing-persons/", {
@@ -70,32 +71,22 @@ export default function FindPage() {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      });
+      })
 
-      console.log("Raw Response:", response);
-      const data = await response.json();
+      console.log("Raw Response:", response)
+      const data = await response.json()
 
       if (response.ok) {
-        alert("Missing person report submitted successfully!");
-        setFormData({
-          firstName: "",
-          lastName: "",
-          age: "",
-          gender: "",
-          lastSeenLocation: "",
-          missingDate: "",
-          description: "",
-        });
-        setPreviewUrls([]);
-        setSelectedFiles([]);
+        alert("Missing person report submitted successfully!")
+        router.push("/my-missing")
       } else {
-        alert(data || "Failed to submit report.");
+        alert(data || "Failed to submit report.")
       }
     } catch (error) {
-      console.error("Error submitting report:", error);
-      alert("An error occurred. Please try again.");
+      console.error("Error submitting report:", error)
+      alert("An error occurred. Please try again.")
     }
-  };
+  }
 
   return (
     <div className="container max-w-7xl px-4 sm:px-6 lg:px-40 py-10">
@@ -130,7 +121,13 @@ export default function FindPage() {
           <div className="flex flex-wrap gap-4">
             {previewUrls.map((url, index) => (
               <div key={index} className="relative w-32 h-32">
-                <Image src={url} alt="Preview" layout="fill" objectFit="cover" className="rounded-lg" />
+                <Image
+                  src={url || "/placeholder.svg"}
+                  alt="Preview"
+                  layout="fill"
+                  objectFit="cover"
+                  className="rounded-lg"
+                />
                 <button
                   type="button"
                   className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
@@ -153,5 +150,6 @@ export default function FindPage() {
         </Button>
       </form>
     </div>
-  );
+  )
 }
+

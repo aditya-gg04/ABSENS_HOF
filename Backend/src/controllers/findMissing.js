@@ -84,7 +84,45 @@ export const searchMissingPersons = async (req, res) => {
     }
 };
 
+export const getMissingPersonsByUserId = async (req, res) => {
+    try {
+        const missingPersons = await MissingPerson.find({
+            reportedBy: req.user._id,
+        }).sort({ missingDate: -1 });
+
+        return ApiResponse.success(res, {
+            status: 200,
+            message: 'Missing persons retrieved successfully',
+            data: missingPersons,
+        });
+    } catch (error) {
+        console.error('Error fetching missing persons:', error);
+        return ApiResponse.error(res, 500, 'Server Error');
+    }
+}
+
 export const getMissingPersonById = async (req, res) => {
+    try {
+        const person = await MissingPerson.findById(req.params.id);
+
+        if (!person) {
+            return ApiResponse.error(res, {statusCode: 404,message: 'Missing person not found'});
+        }
+
+        return ApiResponse.success(res, {
+            status: 200,
+            message: 'Missing person retrieved successfully',
+            data: person,
+        });
+    } catch (error) {
+        console.error('Error fetching missing person:', error);
+        return ApiResponse.error(res, {statusCode:500,message: 'Server Error'});
+    }
+}
+
+
+
+export const getMissingPersonByIds = async (req, res) => {
     try {
         // Expecting the frontend to send { ids: [id1, id2, id3, ...] }
         const { ids } = req.body;
