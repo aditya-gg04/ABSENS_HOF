@@ -1,6 +1,5 @@
-from fastapi import FastAPI, Form, File, UploadFile
+from fastapi import FastAPI, Form, UploadFile
 from typing import List
-from fastapi.staticfiles import StaticFiles
 import uvicorn
 import numpy as np  
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +10,6 @@ import os
 from pinecone import Pinecone, ServerlessSpec
 import requests
 from io import BytesIO
-from PIL import Image
 
 # Initialize Pinecone
 load_dotenv()
