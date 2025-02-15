@@ -53,9 +53,128 @@ def allowed_file(filename):
 async def root():
     return {"message": "Hello World"}
 
-@app.post("/report-missing")
-async def store_user_images(user_id: str = Form(...), image_urls: List[str] = Form(...)):
+@app.post("/save-find-missing")
+async def save_find_missing(user_id: str = Form(...), image_urls: List[str] = Form(...)):
+    ''' Stores image of person in find namespace'''
+    embeddings = []
+    for url in image_urls:
+        try:
+            # Fetch image from URL
+            response = requests.get(url)
+            response.raise_for_status()  # Raise exception for bad status codes
+            
+            # Create UploadFile directly from downloaded image bytes
+            image_filename = f"{user_id}_{uuid.uuid4()}.jpg"
+            upload_file = UploadFile(filename=image_filename, file=BytesIO(response.content))
+            
+            embedding = await generate_embeddings(upload_file)
+            if embedding is not None:  # Only add embedding if face was detected
+                embeddings.append(embedding)
+                
+        except Exception as e:
+            print(f"Error processing image from URL {url}: {e}")
+            continue
+    
+    if not embeddings:
+        return {"error": "No valid faces detected in any of the provided images"}
+    
+    # Compute the mean embedding (averaging all images of the same user)
+    final_embedding = np.mean(embeddings, axis=0)
+    final_embedding_list = [float(x) for x in final_embedding]
+        
+    index.upsert([(user_id, final_embedding_list)], namespace="find")
+    return {"success": True, "message": "Finding person embeddings saved successfully"}
+
+
+@app.post("/save-report-missing")
+async def save_report_missing(user_id: str = Form(...), image_urls: List[str] = Form(...)):
+    ''' Stores image of person in find namespace'''
+    embeddings = []
+    for url in image_urls:
+        try:
+            # Fetch image from URL
+            response = requests.get(url)
+            response.raise_for_status()  # Raise exception for bad status codes
+            
+            # Create UploadFile directly from downloaded image bytes
+            image_filename = f"{user_id}_{uuid.uuid4()}.jpg"
+            upload_file = UploadFile(filename=image_filename, file=BytesIO(response.content))
+            
+            embedding = await generate_embeddings(upload_file)
+            if embedding is not None:  # Only add embedding if face was detected
+                embeddings.append(embedding)
+                
+        except Exception as e:
+            print(f"Error processing image from URL {url}: {e}")
+            continue
+    
+    if not embeddings:
+        return {"error": "No valid faces detected in any of the provided images"}
+    
+    # Compute the mean embedding (averaging all images of the same user)
+    final_embedding = np.mean(embeddings, axis=0)
+    final_embedding_list = [float(x) for x in final_embedding]
+        
+    index.upsert([(user_id, final_embedding_list)], namespace="report")
+    
+    return {"success": True, "message": "Finding person embeddings saved successfully"}
+
+
+
+@app.post("/search-find-missing")
+async def search_find_missing(user_id: str = Form(...), image_urls: List[str] = Form(...)):
     """Stores multiple images of the same user from URLs, averages their embeddings, and stores in Pinecone."""
+    embeddings = []
+    for url in image_urls:
+        try:
+            # Fetch image from URL
+            response = requests.get(url)
+            response.raise_for_status()  # Raise exception for bad status codes
+            
+            # Create UploadFile directly from downloaded image bytes    
+            image_filename = f"{user_id}_{uuid.uuid4()}.jpg"
+            upload_file = UploadFile(filename=image_filename, file=BytesIO(response.content))
+            
+            embedding = await generate_embeddings(upload_file)
+            if embedding is not None:  # Only add embedding if face was detected
+                embeddings.append(embedding)
+                
+        except Exception as e:
+            print(f"Error processing image from URL {url}: {e}")
+            continue
+    
+    if not embeddings:
+        return {"error": "No valid faces detected in any of the provided images"}
+    
+    # Compute the mean embedding (averaging all images of the same user)
+    final_embedding = np.mean(embeddings, axis=0)
+    final_embedding_list = [float(x) for x in final_embedding]
+
+    # Store in Pinecone under the 'reported' namespace
+    try:
+        query_response = index.query(vector=final_embedding_list, top_k=1, namespace="report", include_metadata=True)
+        matches = query_response["matches"]
+        if matches and matches[0]["score"] > 0.8:
+            # Create a clean response dictionary with only necessary data
+            match_data = [{
+                "id": match["id"],
+                "score": float(match["score"]),  # Convert numpy float to Python float
+                "metadata": match.get("metadata", {})
+            } for match in matches]
+            return {
+                "success": True,
+                "message": "User found",
+                "match": match_data
+            }
+        
+        return {"message": "No matches found", "success": False}
+        
+    except Exception as e:
+        print(f"Error searching embedding: {e}")
+        return {"error": str(e)}
+
+@app.post("/search-report-missing")
+async def search_report_missing(user_id: str = Form(...), image_urls: List[str] = Form(...)):
     embeddings = []
     for url in image_urls:
         try:
@@ -84,60 +203,25 @@ async def store_user_images(user_id: str = Form(...), image_urls: List[str] = Fo
 
     # Store in Pinecone under the 'reported' namespace
     try:
-        # check if user_id already exists in the index with namespace "unconfirmed"
-        query_response = index.query(vector=final_embedding_list, top_k=1, namespace="unconfirmed", include_metadata=True)
-        match_unconfirmed = query_response["matches"]
-        if match_unconfirmed and match_unconfirmed[0]["score"] > 0.8:
-            return {"message": "User already exists in unconfirmed namespace", "user_id": user_id, "similarity_score": match_unconfirmed[0]["score"]}
+        query_response = index.query(vector=final_embedding_list, top_k=1, namespace="find", include_metadata=True)
+        matches = query_response["matches"]
+        if matches and matches[0]["score"] > 0.8:
+            # Create a clean response dictionary with only necessary data
+            match_data = [{
+                "id": match["id"],
+                "score": float(match["score"]),  # Convert numpy float to Python float
+                "metadata": match.get("metadata", {})
+            } for match in matches]
+            return {
+                "success": True,
+                "message": "User found",
+                "match": match_data
+            }
         
-        matches_reported = index.query(vector=final_embedding_list, top_k=1, namespace="reported", include_metadata=True)["matches"]
-        if matches_reported and matches_reported[0]["score"] > 0.8:
-            return {"message": "User already exists in reported namespace", "user_id": user_id, "similarity_score": matches_reported[0]["score"]}, 
-        
-        
-        index.upsert([(user_id, final_embedding_list)], namespace="reported")
-        return {
-            "message": "User images stored successfully",
-            "user_id": user_id,
-            "status": "success",
-            "embedding_size": len(final_embedding_list)
-        }
-    except Exception as e:
-        print(f"Error saving embedding: {e}")
-        return {"error": str(e)}
-
-@app.post("/find-missing")
-async def find_missing_child(user_id: str = Form(...), image_url: str = Form(...)):
-    """Searches for a missing child using facial similarity."""
-    try:
-        # Fetch image from URL
-        response = requests.get(image_url)
-        response.raise_for_status()  # Raise exception for bad status codes
-        
-        # Create UploadFile directly from downloaded image bytes
-        image_filename = f"{user_id}_{uuid.uuid4()}.jpg"
-        upload_file = UploadFile(filename=image_filename, file=BytesIO(response.content))
-        
-        embedding = await generate_embeddings(upload_file)
-        if embedding is None:
-            return {"error": "No valid face detected in the provided image"}
-
-        # Query Pinecone for similar embeddings in 'reported' namespace
-        search_results = index.query(vector=embedding, top_k=1, namespace="reported", include_metadata=True)
-
-        if search_results["matches"]:
-            match = search_results["matches"][0]
-            # Check if similarity score is above threshold (0.8 for high confidence)
-            if match["score"] > 0.8:
-                user_id = match["id"]
-                return {"message": "Child found", "user_id": user_id, "similarity_score": match["score"]}
-        
-        # If no match found or similarity below threshold, store embedding in 'unconfirmed' namespace
-        index.upsert([(user_id, embedding)], namespace="unconfirmed")
-        return {"message": "No match found, stored for future cases"}
+        return {"message": "No matches found", "success": False}
         
     except Exception as e:
-        print(f"Error processing image from URL {image_url}: {e}")
+        print(f"Error searching embedding: {e}")
         return {"error": str(e)}
    
    
