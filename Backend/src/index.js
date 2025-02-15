@@ -1,17 +1,17 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
+// import path from 'path';
+// import { fileURLToPath } from 'url';
+// import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import app from './app.js';
 
 // Create ES module equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
 
 // Load environment variables first
-dotenv.config({ 
-  path: path.resolve(__dirname, '../.env') // Adjusted path based on typical project structure
-});
+// dotenv.config({ 
+//   path: path.resolve(__dirname, '/.env') // Adjusted path based on typical project structure
+// });
 
 // console.log('Cloudinary Config:', {
 //   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
