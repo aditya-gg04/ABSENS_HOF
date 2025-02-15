@@ -136,7 +136,7 @@ const DashboardPage: React.FC = () => {
   const handleProfileUpdate = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // Typically, make an API call here to update the user profile
-    console.log("Updated profile:", editedProfile);
+    // console.log("Updated profile:", editedProfile);
     setIsEditingProfile(false);
   };
 
@@ -233,7 +233,7 @@ const DashboardPage: React.FC = () => {
                             const file = e.target.files?.[0];
                             if (file) {
                               // Handle image upload here (e.g., call your API)
-                              console.log("File selected:", file);
+                              // console.log("File selected:", file);
                             }
                           }}
                         />

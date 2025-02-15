@@ -53,7 +53,7 @@ export default function MyMissingPersonsPage() {
     };
 
     fetchMissingPersons();
-  }, [user, router]);
+  }, [user, router, API_URL]);
 
   const handleViewDetails = (person: MissingPerson) => {
     // Dispatch the selected person to Redux

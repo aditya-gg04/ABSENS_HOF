@@ -7,9 +7,19 @@ import { Label } from "@/components/ui/label"
 import { Upload, SearchIcon, X } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
+import { Loader } from "@/components/ui/loader"
 
 // Define types
 interface SearchResult {
+  _id: string
+  name: string
+  age: number
+  missingDate: string
+  lastSeenLocation: string
+  photos: string[]
+}
+
+interface MissingPerson {
   _id: string
   name: string
   age: number
@@ -35,9 +45,10 @@ export default function ReportPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
   const [accessToken, setAccessToken] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isProcessingFastAPI, setIsProcessingFastAPI] = useState(false)
   const router = useRouter()
-  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL
 
   // Fetch access token from localStorage
   useEffect(() => {
@@ -58,7 +69,10 @@ export default function ReportPage() {
     const files = Array.from(e.target.files || [])
     if (files.length) {
       setSelectedFiles((prevFiles) => [...prevFiles, ...files])
-      setPreviewUrls((prevUrls) => [...prevUrls, ...files.map((file) => URL.createObjectURL(file))])
+      setPreviewUrls((prevUrls) => [
+        ...prevUrls,
+        ...files.map((file) => URL.createObjectURL(file)),
+      ])
     }
   }
 
@@ -68,11 +82,46 @@ export default function ReportPage() {
     setPreviewUrls((prevUrls) => prevUrls.filter((_, i) => i !== index))
   }
 
+  const callFastAPIBackend = async (person: MissingPerson): Promise<void> => {
+    try {
+      // Create a FormData instance.
+      const formData: FormData = new FormData()
+      formData.append("user_id", person._id)
+
+      // Append each image URL to the formData using the same key "image_urls".
+      person.photos.forEach((photoUrl: string) => {
+        formData.append("image_urls", photoUrl)
+      })
+
+      const FIND_MISSING_API_URL = process.env.NEXT_PUBLIC_IMAGE_RECOGNITION_URL
+
+      const response: Response = await fetch(
+        `${FIND_MISSING_API_URL}/save-report-missing`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error("Failed to send image URLs to API")
+      }
+
+      const responseData: any = await response.json()
+      // console.log("API response:", responseData)
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("Error in callFastAPIBackend:", error.message)
+      } else {
+        console.error("Unknown error in callFastAPIBackend")
+      }
+    }
+  }
+
   // Handle search request (POST request to create sighting report)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-
+    setIsSubmitting(true)
     try {
       const formData = new FormData()
 
@@ -100,21 +149,33 @@ export default function ReportPage() {
       }
 
       const data = await response.json()
-      alert("Sighting report submitted successfully!")
+      const person = data.data
+
+      // Call the FastAPI backend after the first call succeeds
+      setIsProcessingFastAPI(true)
+      await callFastAPIBackend(person)
+      setIsProcessingFastAPI(false)
+
+      // Only route to next page when both API calls are done
       router.push("/my-reports")
     } catch (error) {
       console.error("Submission error:", error)
       alert("Error: " + error)
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
+      setIsProcessingFastAPI(false)
     }
   }
 
   return (
-    <div className="container py-10">
+    <div className="container py-10 px-10">
       <div className="max-w-4xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight text-center">Report Missing Person</h1>
-        <p className="text-muted-foreground mt-2 text-center">Provide details to report a missing person sighting.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-center">
+          Report Missing Person
+        </h1>
+        <p className="text-muted-foreground mt-2 text-center">
+          Provide details to report a missing person sighting.
+        </p>
 
         {/* Input Fields */}
         <div className="grid gap-4 sm:grid-cols-2">
@@ -164,8 +225,8 @@ export default function ReportPage() {
                       src={url || "/placeholder.svg"}
                       alt={`Selected file ${index + 1}`}
                       className="h-32 w-32 object-cover rounded-lg"
-                      height={32}
-                      width={32}
+                      height={128}
+                      width={128}
                     />
                     <button
                       type="button"
@@ -181,9 +242,12 @@ export default function ReportPage() {
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
                 <Upload className="h-12 w-12 mb-3 text-muted-foreground" />
                 <p className="mb-2 text-sm text-muted-foreground">
-                  <span className="font-semibold">Click to upload</span> or drag and drop
+                  <span className="font-semibold">Click to upload</span> or drag and
+                  drop
                 </p>
-                <p className="text-xs text-muted-foreground">Supported formats: JPG, PNG (MAX. 10MB)</p>
+                <p className="text-xs text-muted-foreground">
+                  Supported formats: JPG, PNG (MAX. 10MB)
+                </p>
               </div>
             )}
             <input
@@ -197,11 +261,27 @@ export default function ReportPage() {
           </label>
         </div>
 
+        {/* Loader for FastAPI processing */}
+        {isProcessingFastAPI && (
+          <div className="text-center mt-4">
+            <Loader size="sm" />
+            <span>Processing image recognition...</span>
+          </div>
+        )}
+
         {/* Submit Button */}
         <div className="flex justify-center">
-          <Button size="lg" className="gap-2" onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? (
-              "Submitting..."
+          <Button
+            size="lg"
+            className="gap-2"
+            onClick={handleSubmit}
+            disabled={isSubmitting || isProcessingFastAPI}
+          >
+            {isSubmitting ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader size="sm" />
+                <span>Submitting report...</span>
+              </div>
             ) : (
               <>
                 <SearchIcon className="h-4 w-4" />
@@ -214,4 +294,3 @@ export default function ReportPage() {
     </div>
   )
 }
-

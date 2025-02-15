@@ -22,6 +22,9 @@ export default function ReportDetailPage() {
   const { id } = useParams(); // Retrieve the report ID from the URL
   const [report, setReport] = useState<ReportedCase | null>(null);
   const [loading, setLoading] = useState(true);
+  // Change matchingResults from an array to a single object
+  const [matchingResult, setMatchingResult] = useState<any | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   useEffect(() => {
@@ -52,7 +55,71 @@ export default function ReportDetailPage() {
 
       fetchReport();
     }
-  }, [id, router]);
+  }, [id, router, API_URL]);
+
+  const handleSearchMatches = async (person: ReportedCase): Promise<void> => {
+    setIsSearching(true);
+    setMatchingResult(null); // Reset matching result
+    try {
+      const formData: FormData = new FormData();
+      formData.append("user_id", person._id);
+      person.photos?.forEach((photoUrl: string) => {
+        formData.append("image_urls", photoUrl);
+      });
+
+      const FIND_MISSING_API_URL = process.env.NEXT_PUBLIC_IMAGE_RECOGNITION_URL;
+      const response: Response = await fetch(
+        `${FIND_MISSING_API_URL}/search-report-missing`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to send image URLs to API");
+      }
+
+      const responseData: any = await response.json();
+      // console.log("API response:", responseData);
+
+      if (responseData.success === false) {
+        // No matches found
+        return;
+      }
+
+      // Extract the match ID (assuming responseData.match is an array)
+      const matchId = responseData.match[0]?.id;
+      if (!matchId) {
+        setMatchingResult(null);
+        return;
+      }
+
+      // Fetch matching result using the received ID
+      const matchingResponse = await fetch(`${API_URL}/missing-persons/${matchId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+
+      if (!matchingResponse.ok) {
+        throw new Error("Failed to fetch matching results");
+      }
+
+      const matchingData = await matchingResponse.json();
+      // console.log("Matching data:", matchingData.data);
+      // Store the matching result as a single object
+      setMatchingResult(matchingData.data || null);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("Error in handleSearchMatches:", error.message);
+      } else {
+        console.error("Unknown error in handleSearchMatches");
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -66,7 +133,9 @@ export default function ReportDetailPage() {
     return (
       <div className="container mx-auto py-10">
         <p>No report data found.</p>
-        <Button onClick={() => router.push("/my-reports")}>Back to My Reported Cases</Button>
+        <Button onClick={() => router.push("/my-reports")}>
+          Back to My Reported Cases
+        </Button>
       </div>
     );
   }
@@ -118,12 +187,71 @@ export default function ReportDetailPage() {
           </div>
           {/* Search for Matches Button */}
           <div className="mt-6">
-            <Button onClick={() => { /* Add your search matching logic here */ }}>
-              Search for Matches
+            <Button
+              onClick={() => handleSearchMatches(report)}
+              disabled={isSearching}
+            >
+              {isSearching ? (
+                <>
+                  <Loader size="sm" />
+                  Searching...
+                </>
+              ) : (
+                "Search for Matches"
+              )}
             </Button>
           </div>
+          {!isSearching && (
+            <div className="mt-6">
+              {matchingResult ? (
+                <MatchingResult result={matchingResult} />
+              ) : (
+                <p className="text-center text-gray-500">No matches found.</p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
+
+const MatchingResult = ({ result }: { result: any | null }) => {
+  if (!result) {
+    return <p className="text-center text-gray-500">No matching result found.</p>;
+  }
+
+  return (
+    <div className="mt-6">
+      <h3 className="text-xl font-semibold">Matching Result</h3>
+      <Card>
+        <CardContent className="p-4">
+          <h4 className="font-semibold">{result.name}</h4>
+          <p className="text-sm text-muted-foreground">Age: {result.age}</p>
+          <p className="text-sm text-muted-foreground">Gender: {result.gender}</p>
+          <p className="text-sm text-muted-foreground">
+            Last seen: {result.lastSeenLocation}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Missing since: {new Date(result.missingDate).toLocaleDateString()}
+          </p>
+          <p className="mt-2">{result.description}</p>
+          {result.photos && result.photos.length > 0 && (
+            <div className="mt-2 flex space-x-2">
+              {result.photos.map((photo: string, photoIndex: number) => (
+                <Image
+                  key={photoIndex}
+                  src={photo || "/placeholder.svg"}
+                  alt={`Missing person photo ${photoIndex + 1}`}
+                  width={100}
+                  height={100}
+                  className="rounded-md object-cover"
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
