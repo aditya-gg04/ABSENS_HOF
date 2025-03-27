@@ -18,8 +18,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Modern Next.js Application",
-  description: "A professional Next.js application with a modern design",
+  title: "Absens",
+  description: "AI-Powered Solution for Finding Missing Persons!",
+  icons: {
+    icon: "Frontend/app/favicon.ico",
+  },
 };
 
 export default function RootLayout({
