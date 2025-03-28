@@ -38,8 +38,8 @@ const generateOTP = async (req, res) =>{
 
     const otp = otpGenerator.generate(6, {
         digits: true,
-        alphabets: false,
-        upperCase: false,
+        lowerCaseAlphabets: false, // ✅ Corrected
+        upperCaseAlphabets: false, // ✅ Corrected
         specialChars: false,
     });
 
