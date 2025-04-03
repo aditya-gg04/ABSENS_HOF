@@ -12,29 +12,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Loader } from "@/components/ui/loader";
 import { logout } from "@/lib/slices/authSlice";
 
-const routes = [
-  {
-    href: "/",
-    label: "Home",
-  },
-  {
-    href: "/report",
-    label: "Report Missing",
-  },
-  {
-    href: "/search",
-    label: "Find Missing",
-  },
-  {
-    href: "/alerts",
-    label: "Alerts",
-  },
-  {
-    href: "/dashboard",
-    label: "Dashboard",
-  },
-];
-
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -75,45 +52,31 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-[#004d40] px-8">
-      <div className="container flex h-16 items-center relative">
-        {/* Desktop Navigation */}
-        <div className="mr-4 hidden md:flex flex-1">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-primary shadow-md">
+      <div className="container px-4 mx-auto flex h-16 items-center relative">
+        {/* Mobile Logo - Always visible */}
+        <div className="flex md:hidden items-center">
           <Link
             href="/"
             onClick={handleLinkClick}
-            className="mr-6 flex items-center space-x-2"
+            className="flex items-center space-x-2"
           >
-            <AlertTriangle className="h-6 w-6 text-white" />
-            <span className="text-xl font-bold text-white">ABSENS</span>
+            <AlertTriangle className="h-5 w-5 text-primary-foreground" />
+            <span className="text-lg font-bold text-primary-foreground">ABSENS</span>
           </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            {routes.map((route) => (
-              <Link
-                key={route.href}
-                href={route.href}
-                onClick={handleLinkClick}
-                className={`transition-colors hover:text-white/80 ${
-                  pathname === route.href ? "text-white" : "text-white/60"
-                }`}
-              >
-                {route.label}
-              </Link>
-            ))}
-          </nav>
         </div>
 
         {/* Mobile Navigation using a Sheet */}
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon" className="mr-2 text-white">
+          <SheetTrigger asChild className="md:hidden mr-auto ml-2">
+            <Button variant="ghost" size="icon" className="text-primary-foreground h-8 w-8 p-0 hover:bg-primary/80">
               <Menu className="h-5 w-5" />
               <span className="sr-only">Toggle Menu</span>
             </Button>
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="bg-[#004d40] text-white border-r-0"
+            className="bg-card text-card-foreground border-r border-border w-[250px] sm:w-[300px]"
           >
             <Link
               href="/"
@@ -123,8 +86,8 @@ export default function Navbar() {
               }}
               className="flex items-center space-x-2 mb-8"
             >
-              <AlertTriangle className="h-6 w-6" />
-              <span className="text-xl font-bold">ABSENS</span>
+              <AlertTriangle className="h-6 w-6 text-foreground" />
+              <span className="text-xl font-bold text-foreground">ABSENS</span>
             </Link>
             <nav className="flex flex-col gap-4">
               {routes.map((route) => (
@@ -135,8 +98,8 @@ export default function Navbar() {
                     setOpen(false);
                     handleLinkClick();
                   }}
-                  className={`text-lg font-medium transition-colors hover:text-white/80 ${
-                    pathname === route.href ? "text-white" : "text-white/60"
+                  className={`text-lg font-medium transition-colors hover:text-foreground ${
+                    pathname === route.href ? "text-foreground" : "text-muted-foreground"
                   }`}
                 >
                   {route.label}
@@ -146,21 +109,48 @@ export default function Navbar() {
           </SheetContent>
         </Sheet>
 
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center flex-1">
+          <Link
+            href="/"
+            onClick={handleLinkClick}
+            className="mr-6 flex items-center space-x-2"
+          >
+            <AlertTriangle className="h-6 w-6 text-primary-foreground" />
+            <span className="text-xl font-bold text-primary-foreground">ABSENS</span>
+          </Link>
+          <nav className="flex items-center space-x-6 text-sm font-medium">
+            {routes.map((route) => (
+              <Link
+                key={route.href}
+                href={route.href}
+                onClick={handleLinkClick}
+                className={`transition-colors hover:text-primary-foreground ${
+                  pathname === route.href ? "text-primary-foreground" : "text-primary-foreground/80"
+                }`}
+              >
+                {route.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
         {/* Right Side: Register or Logout button, plus ModeToggle */}
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <div className="w-full flex-1 md:w-auto md:flex-none"></div>
+        <div className="flex items-center ml-auto space-x-2">
           {isLoggedIn ? (
             <Button
-              variant="outline"
-              className="mr-2 bg-red-500 text-white"
+              variant="destructive"
+              size="sm"
+              className="text-xs sm:text-sm"
               onClick={handleLogout}
             >
               Logout
             </Button>
           ) : (
             <Button
-              variant="outline"
-              className="mr-2 bg-[#004d40] text-white"
+              variant="secondary"
+              size="sm"
+              className="text-xs sm:text-sm"
               asChild
             >
               <Link href="/signup" onClick={handleLinkClick}>

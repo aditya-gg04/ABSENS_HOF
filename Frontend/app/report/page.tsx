@@ -168,82 +168,88 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="container py-10 px-10">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight text-center">
-          Report Missing Person
-        </h1>
-        <p className="text-muted-foreground mt-2 text-center">
-          Provide details to report a missing person sighting.
-        </p>
+    <div className="container px-4 sm:px-6 md:px-8 py-6 sm:py-10 max-w-full overflow-x-hidden">
+      <div className="w-full max-w-3xl mx-auto space-y-4 sm:space-y-6">
+        <div className="text-center">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Report Missing Person
+          </h1>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+            Provide details to report a missing person sighting.
+          </p>
+        </div>
 
         {/* Input Fields */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 w-full">
+          <div className="space-y-2 w-full">
+            <Label htmlFor="name" className="text-sm font-medium block">Name</Label>
             <Input
               id="name"
               name="name"
               placeholder="Enter name (optional)"
               value={searchParams.name}
               onChange={handleInputChange}
+              className="w-full max-w-full"
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
+          <div className="space-y-2 w-full">
+            <Label htmlFor="location" className="text-sm font-medium block">Location</Label>
             <Input
               id="location"
               name="location"
               placeholder="Enter sighting location"
               value={searchParams.location}
               onChange={handleInputChange}
+              className="w-full max-w-full"
             />
           </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="description">Description</Label>
+          <div className="space-y-2 sm:col-span-2 w-full">
+            <Label htmlFor="description" className="text-sm font-medium block">Description</Label>
             <Input
               id="description"
               name="description"
-              placeholder="Additional details"
+              placeholder="Additional details about the person"
               value={searchParams.description}
               onChange={handleInputChange}
+              className="w-full max-w-full"
             />
           </div>
         </div>
 
         {/* Upload Section */}
-        <div className="mt-6">
+        <div className="mt-4 sm:mt-6 w-full">
+          <Label htmlFor="searchPhoto" className="text-sm font-medium block mb-2">Photos</Label>
           <label
             htmlFor="searchPhoto"
-            className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50"
+            className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50"
           >
             {previewUrls.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2 p-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2 w-full">
                 {previewUrls.map((url, index) => (
-                  <div key={index} className="relative">
-                    <Image
-                      src={url || "/placeholder.svg"}
-                      alt={`Selected file ${index + 1}`}
-                      className="h-32 w-32 object-cover rounded-lg"
-                      height={128}
-                      width={128}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+                  <div key={index} className="relative flex justify-center">
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 flex-shrink-0">
+                      <Image
+                        src={url || "/placeholder.svg"}
+                        alt={`Selected file ${index + 1}`}
+                        className="object-cover rounded-lg"
+                        layout="fill"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                      >
+                        <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <Upload className="h-12 w-12 mb-3 text-muted-foreground" />
-                <p className="mb-2 text-sm text-muted-foreground">
-                  <span className="font-semibold">Click to upload</span> or drag and
-                  drop
+              <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center w-full">
+                <Upload className="h-8 w-8 sm:h-12 sm:w-12 mb-2 sm:mb-3 text-muted-foreground flex-shrink-0" />
+                <p className="mb-1 sm:mb-2 text-xs sm:text-sm text-muted-foreground">
+                  <span className="font-semibold">Click to upload</span> or drag and drop
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Supported formats: JPG, PNG (MAX. 10MB)
@@ -259,33 +265,36 @@ export default function ReportPage() {
               onChange={handleFileChange}
             />
           </label>
+          <p className="text-xs text-muted-foreground mt-2">
+            Upload clear photos to help with identification.
+          </p>
         </div>
 
         {/* Loader for FastAPI processing */}
         {isProcessingFastAPI && (
-          <div className="text-center mt-4">
+          <div className="text-center mt-4 text-sm w-full">
             <Loader size="sm" />
-            <span>Processing image recognition...</span>
+            <span className="ml-2">Processing image recognition...</span>
           </div>
         )}
 
         {/* Submit Button */}
-        <div className="flex justify-center">
+        <div className="flex justify-center mt-6 w-full">
           <Button
             size="lg"
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto sm:min-w-[200px] flex justify-center"
             onClick={handleSubmit}
             disabled={isSubmitting || isProcessingFastAPI}
           >
             {isSubmitting ? (
               <div className="flex items-center justify-center gap-2">
                 <Loader size="sm" />
-                <span>Submitting report...</span>
+                <span className="text-sm sm:text-base">Submitting report...</span>
               </div>
             ) : (
               <>
-                <SearchIcon className="h-4 w-4" />
-                Submit
+                <SearchIcon className="h-4 w-4 flex-shrink-0" />
+                <span className="text-sm sm:text-base">Submit</span>
               </>
             )}
           </Button>

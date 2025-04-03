@@ -147,68 +147,102 @@ export default function FindPage() {
   };
 
   return (
-    <div className="container max-w-7xl px-4 sm:px-6 lg:px-40 py-10">
-      <form onSubmit={handleSubmit} className="space-y-8">
+    <div className="container px-4 sm:px-6 md:px-8 py-6 sm:py-10 max-w-full overflow-x-hidden">
+      <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto space-y-6 sm:space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             Find Missing Person
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             Please provide as much information as possible.
           </p>
         </div>
 
         {/* Personal Information */}
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold">Personal Information</h2>
-          <div className="grid gap-6 sm:grid-cols-2">
-            <Input
-              id="firstName"
-              placeholder="First Name"
-              onChange={handleChange}
-            />
-            <Input
-              id="lastName"
-              placeholder="Last Name"
-              onChange={handleChange}
-            />
-            <Input
-              id="age"
-              type="number"
-              placeholder="Age"
-              onChange={handleChange}
-            />
-            <Input
-              id="gender"
-              placeholder="Gender"
-              onChange={handleChange}
-            />
+        <div className="space-y-4 sm:space-y-6 w-full">
+          <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Personal Information</h2>
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 w-full">
+            <div className="space-y-2 w-full">
+              <label htmlFor="firstName" className="text-sm font-medium block text-foreground">First Name</label>
+              <Input
+                id="firstName"
+                placeholder="First Name"
+                onChange={handleChange}
+                className="w-full max-w-full"
+              />
+            </div>
+            <div className="space-y-2 w-full">
+              <label htmlFor="lastName" className="text-sm font-medium block text-foreground">Last Name</label>
+              <Input
+                id="lastName"
+                placeholder="Last Name"
+                onChange={handleChange}
+                className="w-full max-w-full"
+              />
+            </div>
+            <div className="space-y-2 w-full">
+              <label htmlFor="age" className="text-sm font-medium block text-foreground">Age</label>
+              <Input
+                id="age"
+                type="number"
+                placeholder="Age"
+                onChange={handleChange}
+                className="w-full max-w-full"
+              />
+            </div>
+            <div className="space-y-2 w-full">
+              <label htmlFor="gender" className="text-sm font-medium block text-foreground">Gender</label>
+              <Input
+                id="gender"
+                placeholder="Gender"
+                onChange={handleChange}
+                className="w-full max-w-full"
+              />
+            </div>
           </div>
         </div>
 
         {/* Last Seen Information */}
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold">Last Seen Information</h2>
-          <Input
-            id="lastSeenLocation"
-            placeholder="Last Known Location"
-            onChange={handleChange}
-          />
-          <Input id="missingDate" type="date" onChange={handleChange} />
-          <Textarea
-            id="description"
-            placeholder="Description..."
-            rows={4}
-            onChange={handleChange}
-          />
+        <div className="space-y-4 sm:space-y-6 w-full">
+          <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Last Seen Information</h2>
+          <div className="space-y-4 w-full">
+            <div className="space-y-2 w-full">
+              <label htmlFor="lastSeenLocation" className="text-sm font-medium block text-foreground">Last Known Location</label>
+              <Input
+                id="lastSeenLocation"
+                placeholder="Last Known Location"
+                onChange={handleChange}
+                className="w-full max-w-full"
+              />
+            </div>
+            <div className="space-y-2 w-full">
+              <label htmlFor="missingDate" className="text-sm font-medium block text-foreground">Missing Date</label>
+              <Input
+                id="missingDate"
+                type="date"
+                onChange={handleChange}
+                className="w-full max-w-full"
+              />
+            </div>
+            <div className="space-y-2 w-full">
+              <label htmlFor="description" className="text-sm font-medium block text-foreground">Description</label>
+              <Textarea
+                id="description"
+                placeholder="Physical appearance, clothing worn, circumstances of disappearance..."
+                rows={4}
+                onChange={handleChange}
+                className="w-full max-w-full resize-y"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Photo Upload */}
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold">Photos</h2>
-          <div className="flex flex-wrap gap-4">
+        <div className="space-y-4 sm:space-y-6 w-full">
+          <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Photos</h2>
+          <div className="flex flex-wrap gap-3 sm:gap-4 w-full">
             {previewUrls.map((url, index) => (
-              <div key={index} className="relative w-32 h-32">
+              <div key={index} className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 flex-shrink-0">
                 <Image
                   src={url || "/placeholder.svg"}
                   alt="Preview"
@@ -221,14 +255,14 @@ export default function FindPage() {
                   className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
                   onClick={() => handleRemoveImage(index)}
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-3 w-3 sm:h-4 sm:w-4" />
                 </button>
               </div>
             ))}
           </div>
-          <label className="flex items-center gap-4 cursor-pointer border-2 border-dashed p-4 rounded-lg hover:bg-muted/50">
-            <Upload className="h-8 w-8 text-muted-foreground" />
-            <span>Click to upload photos</span>
+          <label className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 cursor-pointer border-2 border-dashed border-border p-3 sm:p-4 rounded-lg hover:bg-muted/50 w-full">
+            <Upload className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground flex-shrink-0" />
+            <span className="text-sm sm:text-base text-foreground">Click to upload photos</span>
             <input
               id="photo"
               type="file"
@@ -238,32 +272,37 @@ export default function FindPage() {
               onChange={handleImageUpload}
             />
           </label>
+          <p className="text-xs text-muted-foreground">
+            Upload clear, recent photos to improve identification chances.
+          </p>
         </div>
 
         {/* Loader for FastAPI processing */}
         {isProcessingFastAPI && (
-          <div className="text-center mt-4">
+          <div className="text-center mt-4 text-sm sm:text-base w-full">
             <Loader size="sm" />
-            <span>Processing image recognition...</span>
+            <span className="ml-2">Processing image recognition...</span>
           </div>
         )}
 
         {/* Submit Button */}
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={isSubmitting || isProcessingFastAPI}
-        >
-          {isSubmitting ? (
-            <div className="flex items-center justify-center gap-2">
-              <Loader size="sm" />
-              <span>Submitting...</span>
-            </div>
-          ) : (
-            "Submit Report"
-          )}
-        </Button>
+        <div className="pt-2 sm:pt-4 w-full flex justify-center">
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full sm:w-auto sm:min-w-[200px] flex justify-center"
+            disabled={isSubmitting || isProcessingFastAPI}
+          >
+            {isSubmitting ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader size="sm" />
+                <span>Submitting...</span>
+              </div>
+            ) : (
+              "Submit Report"
+            )}
+          </Button>
+        </div>
       </form>
     </div>
   );

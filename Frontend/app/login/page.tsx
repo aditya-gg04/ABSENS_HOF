@@ -106,7 +106,7 @@ export default function LoginPage() {
         </div>
         <Button
           type="submit"
-          className="w-full bg-[#004d40]"
+          className="w-full bg-primary"
           disabled={isLoading}
         >
           {isLoading ? <Loader size="sm" /> : "Login"}
