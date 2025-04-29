@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   Search,
@@ -11,8 +12,16 @@ import {
   Calendar,
   X,
   Camera,
+  ArrowRight,
+  Clock,
+  Activity,
+  BarChart3,
+  PieChart,
+  User,
+  Bell,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 // Define interfaces for reported and missing cases based on your data structure
 interface ReportedCase {
@@ -105,6 +114,9 @@ interface UserProfile {
 }
 
 const DashboardPage: React.FC = () => {
+  // Initialize router for navigation
+  const router = useRouter();
+
   // Retrieve authenticated user from Redux store; fallback to mockUserData if not available
   const loggedInUser = useSelector((state: RootState) => state.auth.user);
   const currentUser: User = loggedInUser || mockUserData;
@@ -120,6 +132,38 @@ const DashboardPage: React.FC = () => {
       currentUser.avatar ||
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&q=80",
   });
+
+  // Navigation handlers
+  const handleViewMissingCase = (caseId: string) => {
+    router.push(`/missing/${caseId}`);
+  };
+
+  const handleViewReportedCase = (caseId: string) => {
+    router.push(`/report/${caseId}`);
+  };
+
+  // Helper function to combine and sort both types of cases for the overview
+  const getCombinedRecentActivity = () => {
+    // Create a combined array of both case types with a type indicator
+    const reportedWithType = currentUser.reportedCases.map(item => ({
+      ...item,
+      caseType: 'reported',
+      date: new Date(item.createdAt),
+    }));
+
+    const missingWithType = currentUser.missingCases.map(item => ({
+      ...item,
+      caseType: 'missing',
+      date: new Date(item.createdAt),
+    }));
+
+    // Combine both arrays and sort by date (most recent first)
+    const combined = [...reportedWithType, ...missingWithType]
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, 5); // Get only the 5 most recent activities
+
+    return combined;
+  };
 
   useEffect(() => {
     setEditedProfile({
@@ -337,7 +381,7 @@ const DashboardPage: React.FC = () => {
             <div className="flex items-center">
               <AlertTriangle className="h-8 w-8 text-yellow-500" />
               <div className="ml-4">
-                <p className="text-sm text-gray-600">Active Cases</p>
+                <p className="text-sm text-gray-600">Reported Cases</p>
                 <p className="text-2xl font-bold">
                   {
                     currentUser.reportedCases.filter(
@@ -415,9 +459,165 @@ const DashboardPage: React.FC = () => {
 
           <div className="p-6">
             {activeTab === "overview" && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-medium">Recent Activity</h3>
-                {/* Optionally, combine both reported and missing cases for recent activity */}
+              <div className="space-y-8">
+                {/* Activity Summary */}
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Recent Activity</h3>
+                  <div className="space-y-4">
+                    {getCombinedRecentActivity().length > 0 ? (
+                      getCombinedRecentActivity().map((item) => (
+                        <div
+                          key={item._id}
+                          className="p-4 bg-gray-50 rounded-lg shadow hover:bg-gray-100 transition-colors cursor-pointer"
+                          onClick={() => item.caseType === 'missing'
+                            ? handleViewMissingCase(item._id)
+                            : handleViewReportedCase(item._id)
+                          }
+                        >
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center space-x-2">
+                              {item.caseType === 'missing' ? (
+                                <Search className="h-6 w-6 text-purple-500" />
+                              ) : (
+                                <AlertTriangle className="h-6 w-6 text-yellow-500" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {item.caseType === 'missing' ? 'Missing Person' : 'Reported Sighting'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              <span className="text-xs text-gray-500 mr-2">
+                                {item.date.toLocaleDateString()}
+                              </span>
+                              <Clock className="h-4 w-4 text-gray-400" />
+                            </div>
+                          </div>
+                          <div className="mt-3 flex justify-end">
+                            <div className="flex items-center text-primary hover:text-primary/80 text-sm font-medium">
+                              View details <ArrowRight className="ml-1 h-4 w-4" />
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-center py-4">No recent activity found.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Statistics Section */}
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Statistics</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Case Status Distribution */}
+                    <div className="bg-white p-4 rounded-lg shadow">
+                      <div className="flex items-center mb-4">
+                        <PieChart className="h-5 w-5 text-indigo-500 mr-2" />
+                        <h4 className="text-md font-medium">Case Status</h4>
+                      </div>
+                      <div className="flex items-center justify-around py-4">
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-yellow-500">
+                            {currentUser.reportedCases.filter(c => c.status.toLowerCase() === "pending").length}
+                          </div>
+                          <div className="text-sm text-gray-500">Pending</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-green-500">
+                            {currentUser.reportedCases.filter(c => c.status.toLowerCase() === "resolved").length}
+                          </div>
+                          <div className="text-sm text-gray-500">Resolved</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-red-500">
+                            {currentUser.missingCases.length}
+                          </div>
+                          <div className="text-sm text-gray-500">Missing</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Activity Timeline */}
+                    <div className="bg-white p-4 rounded-lg shadow">
+                      <div className="flex items-center mb-4">
+                        <Activity className="h-5 w-5 text-indigo-500 mr-2" />
+                        <h4 className="text-md font-medium">Activity Summary</h4>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Total Cases</span>
+                          <span className="font-medium">{currentUser.reportedCases.length + currentUser.missingCases.length}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: '100%' }}></div>
+                        </div>
+
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="text-sm text-gray-600">Reported Sightings</span>
+                          <span className="font-medium">{currentUser.reportedCases.length}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div className="bg-yellow-500 h-2.5 rounded-full" style={{
+                            width: `${currentUser.reportedCases.length > 0
+                              ? (currentUser.reportedCases.length / (currentUser.reportedCases.length + currentUser.missingCases.length) * 100)
+                              : 0}%`
+                          }}></div>
+                        </div>
+
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="text-sm text-gray-600">Missing Persons</span>
+                          <span className="font-medium">{currentUser.missingCases.length}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div className="bg-purple-500 h-2.5 rounded-full" style={{
+                            width: `${currentUser.missingCases.length > 0
+                              ? (currentUser.missingCases.length / (currentUser.reportedCases.length + currentUser.missingCases.length) * 100)
+                              : 0}%`
+                          }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Quick Actions</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    <Link href="/report" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
+                      <div className="bg-yellow-100 p-3 rounded-full mr-3">
+                        <AlertTriangle className="h-6 w-6 text-yellow-500" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium">Report Sighting</h4>
+                        <p className="text-sm text-gray-500">Report a missing person sighting</p>
+                      </div>
+                    </Link>
+
+                    <Link href="/find" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
+                      <div className="bg-purple-100 p-3 rounded-full mr-3">
+                        <Search className="h-6 w-6 text-purple-500" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium">Find Missing</h4>
+                        <p className="text-sm text-gray-500">Report a missing person</p>
+                      </div>
+                    </Link>
+
+                    <Link href="/alerts" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
+                      <div className="bg-blue-100 p-3 rounded-full mr-3">
+                        <Bell className="h-6 w-6 text-blue-500" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium">View Alerts</h4>
+                        <p className="text-sm text-gray-500">Check recent alerts</p>
+                      </div>
+                    </Link>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -428,7 +628,8 @@ const DashboardPage: React.FC = () => {
                   {currentUser.reportedCases.map((caseItem) => (
                     <div
                       key={caseItem._id}
-                      className="p-4 bg-gray-50 rounded-lg shadow"
+                      className="p-4 bg-gray-50 rounded-lg shadow hover:bg-gray-100 transition-colors cursor-pointer"
+                      onClick={() => handleViewReportedCase(caseItem._id)}
                     >
                       <div className="flex justify-between items-center">
                         <div className="flex items-center space-x-2">
@@ -472,6 +673,11 @@ const DashboardPage: React.FC = () => {
                           ))}
                         </div>
                       )}
+                      <div className="mt-3 flex justify-end">
+                        <div className="flex items-center text-primary hover:text-primary/80 text-sm font-medium">
+                          View details <ArrowRight className="ml-1 h-4 w-4" />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -485,7 +691,8 @@ const DashboardPage: React.FC = () => {
                   {currentUser.missingCases.map((caseItem) => (
                     <div
                       key={caseItem._id}
-                      className="p-4 bg-gray-50 rounded-lg shadow"
+                      className="p-4 bg-gray-50 rounded-lg shadow hover:bg-gray-100 transition-colors cursor-pointer"
+                      onClick={() => handleViewMissingCase(caseItem._id)}
                     >
                       <div className="flex justify-between items-center">
                         <div className="flex items-center space-x-2">
@@ -531,6 +738,11 @@ const DashboardPage: React.FC = () => {
                           ))}
                         </div>
                       )}
+                      <div className="mt-3 flex justify-end">
+                        <div className="flex items-center text-primary hover:text-primary/80 text-sm font-medium">
+                          View details <ArrowRight className="ml-1 h-4 w-4" />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
