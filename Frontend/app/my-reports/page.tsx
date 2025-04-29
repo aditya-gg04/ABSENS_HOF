@@ -15,6 +15,7 @@ interface ReportedCase {
   location: string
   createdAt: string
   description: string
+  photos?: string[]
 }
 
 export default function MyReportsPage() {
@@ -54,7 +55,7 @@ export default function MyReportsPage() {
     }
 
     fetchReports()
-  }, [user, router])
+  }, [user, router, API_URL])
 
   if (isLoading) {
     return (
