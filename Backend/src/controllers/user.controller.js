@@ -309,16 +309,14 @@ import jwt from 'jsonwebtoken';
 
 const refreshToken = asyncHandler(async (req, res) => {
   const { refreshToken } = req.body;
-//   console.log('refreshToken', req.body);
 
   if (!refreshToken) {
     throw new ApiError(401, 'Unauthorized');
   }
 
   // Verify the refresh token
-  let decoded;
   try {
-    decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
   } catch (err) {
     // If verification fails, the refresh token is expired or invalid.
     res.clearCookie('accessToken');
@@ -327,7 +325,6 @@ const refreshToken = asyncHandler(async (req, res) => {
   }
 
   // Find the user associated with the provided refresh token.
-  // (Alternatively, you might use decoded._id if your token payload includes the user id.)
   const user = await User.findOne({ refreshToken });
   if (!user) {
     res.clearCookie('accessToken');
@@ -335,15 +332,19 @@ const refreshToken = asyncHandler(async (req, res) => {
     throw new ApiError(401, 'Session expired. Please log in again.');
   }
 
-  // Generate a new access token only
-  const newAccessToken = await user.generateAccessToken();
+  // Generate new tokens - both access and refresh tokens
+  // This extends the session with each refresh
+  const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+    await generateAccessAndRefreshToken(user._id);
 
-  // Set the new access token as a cookie.
+  // Set the new tokens as cookies
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
   };
+
   res.cookie('accessToken', newAccessToken, options);
+  res.cookie('refreshToken', newRefreshToken, options);
 
   // Retrieve the updated user data (without sensitive info)
   const newUser = await User.findById(user._id).select('-password');
@@ -354,7 +355,11 @@ const refreshToken = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, {
     statusCode: 200,
     message: 'Token refreshed successfully',
-    data: { user: newUser, accessToken: newAccessToken },
+    data: {
+      user: newUser,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken
+    },
   });
 });
 

@@ -94,17 +94,46 @@ export const getSightingReports = async (req, res) => {
 
 export const getSightingReportById = async (req, res) => {
     try {
-        const report = await SightingReport.findById(req.params.id);
+        // Get ID from either params (GET /:id) or body (POST /matches)
+        const reportId = req.params.id || req.body.id;
 
-        if (!report) {
-            return ApiResponse.error(res, {statusCode: 404, message: 'Report not found'});
+        if (!reportId) {
+            return ApiResponse.error(res, {
+                statusCode: 400,
+                message: 'Report ID is required'
+            });
         }
 
-        return ApiResponse.success(res,{statusCode: 200, message: 'Sighting report', data: report});
+        // Validate that the ID is a valid MongoDB ObjectId
+        if (!mongoose.Types.ObjectId.isValid(reportId)) {
+            return ApiResponse.error(res, {
+                statusCode: 400,
+                message: 'Invalid report ID format'
+            });
+        }
+
+        const report = await SightingReport.findById(reportId);
+
+        if (!report) {
+            return ApiResponse.error(res, {
+                statusCode: 404,
+                message: 'Report not found'
+            });
+        }
+
+        return ApiResponse.success(res, {
+            statusCode: 200,
+            message: 'Sighting report retrieved successfully',
+            data: report
+        });
 
     } catch (error) {
         console.error('Get report error:', error);
-        return ApiResponse.error(res, {statusCode: 500, message: 'Server Error'});
+        return ApiResponse.error(res, {
+            statusCode: 500,
+            message: 'Server Error',
+            error: error.message
+        });
     }
 };
 

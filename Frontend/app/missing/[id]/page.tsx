@@ -96,12 +96,14 @@ export default function MissingPersonDetailPage() {
       }
 
 
-      // Assuming responseData.match is an object and it has an "id" property
-      const matchId = responseData.match[0].id;
-      if (!matchId) {
+      // Assuming responseData.match is an array with objects that have an "id" property
+      if (!responseData.match || !responseData.match[0] || !responseData.match[0].id) {
         setMatchingResult(null);
         return;
       }
+
+      // Extract the ID as a string to ensure it's properly formatted
+      const matchId = String(responseData.match[0].id);
 
       // Fetch matching result using the received ID
       const matchingResponse = await fetch(`${API_URL}/sightings/${matchId}`, {

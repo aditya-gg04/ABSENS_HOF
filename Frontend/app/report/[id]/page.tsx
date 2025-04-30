@@ -91,11 +91,13 @@ export default function ReportDetailPage() {
       }
 
       // Extract the match ID (assuming responseData.match is an array)
-      const matchId = responseData.match[0]?.id;
-      if (!matchId) {
+      if (!responseData.match || !responseData.match[0] || !responseData.match[0].id) {
         setMatchingResult(null);
         return;
       }
+
+      // Extract the ID as a string to ensure it's properly formatted
+      const matchId = String(responseData.match[0].id);
 
       // Fetch matching result using the received ID
       const matchingResponse = await fetch(`${API_URL}/missing-persons/${matchId}`, {

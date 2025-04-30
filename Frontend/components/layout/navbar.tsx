@@ -49,11 +49,30 @@ export default function Navbar() {
     setShowLogoutDialog(true);
   };
 
-  // Handle logout by dispatching the logout action and then redirecting.
-  const handleLogout = () => {
-    dispatch(logout());
-    router.push("/");
-    setShowLogoutDialog(false);
+  // Handle logout by calling the backend logout API and then dispatching the logout action
+  const handleLogout = async () => {
+    try {
+      // Call the backend logout API
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/user/logout`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("accessToken")}`,
+          "Content-Type": "application/json"
+        },
+        credentials: "include"
+      });
+
+      // Dispatch logout action regardless of API response
+      dispatch(logout());
+      router.push("/");
+      setShowLogoutDialog(false);
+    } catch (error) {
+      console.error("Error during logout:", error);
+      // Still logout from frontend even if backend call fails
+      dispatch(logout());
+      router.push("/");
+      setShowLogoutDialog(false);
+    }
   };
 
   // Base routes always visible.

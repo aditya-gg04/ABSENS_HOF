@@ -26,6 +26,7 @@ const authSlice = createSlice({
       localStorage.removeItem("user"); // Clear user from storage on logout
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("accessToken");
+      localStorage.removeItem("lastActivity"); // Clear activity tracking
     },
     // This reducer can be used to synchronize the login state (for example, if tokens change externally)
     updateIsLoggedIn: (state) => {
