@@ -8,6 +8,8 @@ import { Upload, SearchIcon, X } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Loader } from "@/components/ui/loader"
+import { useSelector } from "react-redux"
+import { AuthRequiredPrompt } from "@/components/ui/auth-required-prompt"
 
 // Define types
 interface SearchResult {
@@ -49,6 +51,9 @@ export default function ReportPage() {
   const [isProcessingFastAPI, setIsProcessingFastAPI] = useState(false)
   const router = useRouter()
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL
+
+  // Get authentication state from Redux
+  const isLoggedIn = useSelector((state: { auth: { isLoggedIn: boolean } }) => state.auth.isLoggedIn)
 
   // Fetch access token from localStorage
   useEffect(() => {
@@ -121,6 +126,13 @@ export default function ReportPage() {
   // Handle search request (POST request to create sighting report)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Check if user is logged in
+    if (!isLoggedIn || !accessToken) {
+      alert("You must be logged in to submit a report.")
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const formData = new FormData()
@@ -278,19 +290,29 @@ export default function ReportPage() {
           </div>
         )}
 
+        {/* Authentication Prompt */}
+        {!isLoggedIn && (
+          <AuthRequiredPrompt
+            message="You need to be logged in to submit a missing person report."
+            className="mb-4"
+          />
+        )}
+
         {/* Submit Button */}
         <div className="flex justify-center mt-6 w-full">
           <Button
             size="lg"
             className="gap-2 w-full sm:w-auto sm:min-w-[200px] flex justify-center"
             onClick={handleSubmit}
-            disabled={isSubmitting || isProcessingFastAPI}
+            disabled={isSubmitting || isProcessingFastAPI || !isLoggedIn}
           >
             {isSubmitting ? (
               <div className="flex items-center justify-center gap-2">
                 <Loader size="sm" />
                 <span className="text-sm sm:text-base">Submitting report...</span>
               </div>
+            ) : !isLoggedIn ? (
+              <span className="text-sm sm:text-base">Login to Submit</span>
             ) : (
               <>
                 <SearchIcon className="h-4 w-4 flex-shrink-0" />

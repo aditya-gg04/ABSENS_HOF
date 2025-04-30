@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,8 @@ import { Upload, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Loader } from "@/components/ui/loader";
+import { useSelector } from "react-redux";
+import { AuthRequiredPrompt } from "@/components/ui/auth-required-prompt";
 
 type MissingPerson = {
   _id: string;
@@ -25,6 +27,18 @@ export default function FindPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingFastAPI, setIsProcessingFastAPI] = useState(false);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+
+  // Get authentication state from Redux
+  const isLoggedIn = useSelector((state: { auth: { isLoggedIn: boolean } }) => state.auth.isLoggedIn);
+
+  // Fetch access token from localStorage
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      setAccessToken(token);
+    }
+  }, []);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -94,9 +108,8 @@ export default function FindPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const accessToken = localStorage.getItem("accessToken");
-
-    if (!accessToken) {
+    // Check if user is logged in
+    if (!isLoggedIn || !accessToken) {
       alert("You must be logged in to submit a report.");
       return;
     }
@@ -285,19 +298,29 @@ export default function FindPage() {
           </div>
         )}
 
+        {/* Authentication Prompt */}
+        {!isLoggedIn && (
+          <AuthRequiredPrompt
+            message="You need to be logged in to report a missing person."
+            className="mb-4"
+          />
+        )}
+
         {/* Submit Button */}
         <div className="pt-2 sm:pt-4 w-full flex justify-center">
           <Button
             type="submit"
             size="lg"
             className="w-full sm:w-auto sm:min-w-[200px] flex justify-center"
-            disabled={isSubmitting || isProcessingFastAPI}
+            disabled={isSubmitting || isProcessingFastAPI || !isLoggedIn}
           >
             {isSubmitting ? (
               <div className="flex items-center justify-center gap-2">
                 <Loader size="sm" />
                 <span>Submitting...</span>
               </div>
+            ) : !isLoggedIn ? (
+              "Login to Submit"
             ) : (
               "Submit Report"
             )}
