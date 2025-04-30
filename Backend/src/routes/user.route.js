@@ -7,8 +7,10 @@ import {
     refreshToken,
     generateOTP,
     verifyOtp,
+    updateUserProfile,
+    updateUserAvatar,
 } from '../controllers/user.controller.js';
-// import { upload } from '../middlewares/multer.middleware.js';
+import upload from '../middlewares/upload.js';
 import { verifyToken } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -40,5 +42,9 @@ router.route('/isAuthenticated').get(verifyToken, (req, res) => {
 
 router.route('/get-otp').post(generateOTP);
 router.route('/verify-otp').post(verifyOtp);
+
+// Profile update routes
+router.route('/update-profile').put(verifyToken, updateUserProfile);
+router.route('/update-avatar').put(verifyToken, upload.single('avatar'), updateUserAvatar);
 
 export default router;

@@ -4,8 +4,8 @@ import ApiResponse from '../utils/apiResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import otpGenerator from 'otp-generator';
 import mongoose from 'mongoose';
-import nodemailer from 'nodemailer'
-// import {uploadOnCloudinary} from '../utils/cloudinary.js';
+import nodemailer from 'nodemailer';
+import { uploadToCloudinary } from '../config/cloudinary.js';
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -391,6 +391,128 @@ const logOutUser = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, {}, 'User logged out successfully'));
 });
 
+const updateUserProfile = asyncHandler(async (req, res) => {
+    try {
+        const { fullname, email, gender } = req.body;
+
+        if (!req.user) {
+            throw new ApiError(401, 'Unauthorized access');
+        }
+
+        // Validate inputs
+        if (!fullname || !email) {
+            throw new ApiError(400, 'Full name and email are required');
+        }
+
+        // Format gender to match enum values
+        const formattedGender = gender
+            ? gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase()
+            : 'Others';
+
+        // Check if email is being changed and if it's already in use
+        if (email !== req.user.email) {
+            const existingUser = await User.findOne({ email, _id: { $ne: req.user._id } });
+            if (existingUser) {
+                throw new ApiError(409, 'Email is already in use');
+            }
+        }
+
+        // Update user
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $set: {
+                    fullname,
+                    email,
+                    gender: formattedGender
+                }
+            },
+            { new: true }
+        ).select('-password -refreshToken');
+
+        if (!updatedUser) {
+            throw new ApiError(404, 'User not found');
+        }
+
+        return ApiResponse.success(res, {
+            statusCode: 200,
+            message: 'Profile updated successfully',
+            data: updatedUser
+        });
+    } catch (error) {
+        if (error instanceof ApiError) {
+            return ApiResponse.error(res, {
+                statusCode: error.statusCode,
+                message: error.message,
+                error: error.message
+            });
+        }
+
+        return ApiResponse.error(res, {
+            statusCode: 500,
+            message: 'Error updating profile',
+            error: error.message
+        });
+    }
+});
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    try {
+        if (!req.user) {
+            throw new ApiError(401, 'Unauthorized access');
+        }
+
+        if (!req.file) {
+            throw new ApiError(400, 'Avatar image is required');
+        }
+
+        // Upload image to Cloudinary
+        const avatarUrl = await uploadToCloudinary(
+            req.file.buffer,
+            req.file.mimetype.split('/')[1]
+        );
+
+        if (!avatarUrl) {
+            throw new ApiError(500, 'Error uploading avatar');
+        }
+
+        // Update user with new avatar URL
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $set: {
+                    avatar: avatarUrl
+                }
+            },
+            { new: true }
+        ).select('-password -refreshToken');
+
+        if (!updatedUser) {
+            throw new ApiError(404, 'User not found');
+        }
+
+        return ApiResponse.success(res, {
+            statusCode: 200,
+            message: 'Avatar updated successfully',
+            data: updatedUser
+        });
+    } catch (error) {
+        if (error instanceof ApiError) {
+            return ApiResponse.error(res, {
+                statusCode: error.statusCode,
+                message: error.message,
+                error: error.message
+            });
+        }
+
+        return ApiResponse.error(res, {
+            statusCode: 500,
+            message: 'Error updating avatar',
+            error: error.message
+        });
+    }
+});
+
 export {
     getUsers,
     registerUser,
@@ -399,4 +521,6 @@ export {
     refreshToken,
     generateOTP,
     verifyOtp,
+    updateUserProfile,
+    updateUserAvatar,
 };

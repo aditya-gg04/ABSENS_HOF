@@ -113,48 +113,50 @@ export default function AlertsPage() {
     : notifications.filter(notification => notification.type === activeTab);
 
   return (
-    <div className="container py-10 min-h-screen">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="container py-6 sm:py-10 min-h-screen">
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
-            <p className="text-muted-foreground mt-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Notifications</h1>
+            <p className="text-muted-foreground text-sm sm:text-base mt-1 sm:mt-2">
               Stay updated with the latest alerts and potential matches
             </p>
           </div>
-          <Button variant="outline" className="gap-2">
-            <Bell className="h-4 w-4" />
+          <Button variant="outline" className="gap-2 text-xs sm:text-sm w-full sm:w-auto">
+            <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
             Subscribe to Alerts
           </Button>
         </div>
 
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="MISSING_PERSON">Missing Persons</TabsTrigger>
-            <TabsTrigger value="SIGHTING_REPORT">Sightings</TabsTrigger>
-            <TabsTrigger value="MATCH_FOUND">Matches</TabsTrigger>
-            <TabsTrigger value="STATUS_UPDATE">Updates</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-1 -mx-4 px-4">
+            <TabsList className="mb-4 w-full sm:w-auto flex whitespace-nowrap">
+              <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
+              <TabsTrigger value="MISSING_PERSON" className="text-xs sm:text-sm">Missing Persons</TabsTrigger>
+              <TabsTrigger value="SIGHTING_REPORT" className="text-xs sm:text-sm">Sightings</TabsTrigger>
+              <TabsTrigger value="MATCH_FOUND" className="text-xs sm:text-sm">Matches</TabsTrigger>
+              <TabsTrigger value="STATUS_UPDATE" className="text-xs sm:text-sm">Updates</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value={activeTab}>
             {isLoading ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {[1, 2, 3].map((i) => (
                   <Card key={i}>
-                    <CardHeader>
-                      <div className="flex justify-between">
-                        <Skeleton className="h-6 w-32" />
-                        <Skeleton className="h-4 w-24" />
+                    <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-3">
+                      <div className="flex justify-between flex-wrap gap-2">
+                        <Skeleton className="h-4 sm:h-6 w-24 sm:w-32" />
+                        <Skeleton className="h-3 sm:h-4 w-16 sm:w-24" />
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex gap-4">
-                        <Skeleton className="h-24 w-24 rounded-lg" />
+                    <CardContent className="p-3 sm:p-6 pt-2 sm:pt-3">
+                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                        <Skeleton className="h-16 w-16 sm:h-24 sm:w-24 rounded-lg mx-auto sm:mx-0" />
                         <div className="space-y-2 flex-1">
-                          <Skeleton className="h-5 w-32" />
-                          <Skeleton className="h-4 w-full" />
-                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-4 sm:h-5 w-24 sm:w-32" />
+                          <Skeleton className="h-3 sm:h-4 w-full" />
+                          <Skeleton className="h-3 sm:h-4 w-3/4" />
                         </div>
                       </div>
                     </CardContent>
@@ -162,15 +164,15 @@ export default function AlertsPage() {
                 ))}
               </div>
             ) : filteredNotifications.length === 0 ? (
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-8 text-center">
-                <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No Notifications</h3>
-                <p className="text-muted-foreground mb-6">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 sm:p-8 text-center">
+                <Bell className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-2 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-medium mb-1 sm:mb-2">No Notifications</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
                   You don&apos;t have any notifications yet.
                 </p>
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-3 sm:gap-4">
                 {filteredNotifications.map((notification) => (
                   <Card
                     key={notification._id}
@@ -179,45 +181,50 @@ export default function AlertsPage() {
                     }`}
                     onClick={() => handleNotificationClick(notification)}
                   >
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                          {getNotificationIcon(notification.type)}
-                          {notification.title}
+                    <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-3">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                        <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg break-words">
+                          <span className="flex-shrink-0">
+                            {getNotificationIcon(notification.type)}
+                          </span>
+                          <span className="break-words">{notification.title}</span>
                         </CardTitle>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {notification.isGlobal && (
                             <Badge variant="outline" className="text-xs">Global</Badge>
                           )}
-                          <CardDescription>
+                          <CardDescription className="text-xs">
                             {formatDistanceToNow(new Date(notification.createdAt), {
                               addSuffix: true,
                             })}
                           </CardDescription>
                         </div>
                       </div>
-                      <Badge variant="secondary" className="w-fit">
+                      <Badge variant="secondary" className="w-fit text-xs mt-1 sm:mt-2">
                         {getNotificationTypeLabel(notification.type)}
                       </Badge>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex gap-4">
+                    <CardContent className="p-3 sm:p-6 pt-2 sm:pt-3">
+                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                         {notification.image ? (
-                          <div className="relative h-24 w-24 rounded-lg overflow-hidden flex-shrink-0">
+                          <div className="relative h-16 w-16 sm:h-24 sm:w-24 rounded-lg overflow-hidden flex-shrink-0 mx-auto sm:mx-0">
                             <Image
                               src={notification.image}
                               alt=""
                               fill
+                              sizes="(max-width: 640px) 64px, 96px"
                               className="object-cover"
                             />
                           </div>
                         ) : (
-                          <div className="h-24 w-24 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0">
-                            {getNotificationIcon(notification.type)}
+                          <div className="h-16 w-16 sm:h-24 sm:w-24 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0 mx-auto sm:mx-0">
+                            <span className="scale-75 sm:scale-100">
+                              {getNotificationIcon(notification.type)}
+                            </span>
                           </div>
                         )}
                         <div className="space-y-2">
-                          <p className="text-sm">{notification.message}</p>
+                          <p className="text-xs sm:text-sm break-words">{notification.message}</p>
                           {!notification.isRead && (
                             <Badge variant="default" className="text-xs">New</Badge>
                           )}
@@ -232,16 +239,17 @@ export default function AlertsPage() {
         </Tabs>
 
         {totalPages > 1 && (
-          <div className="flex justify-center gap-2 mt-6">
+          <div className="flex justify-center gap-1 sm:gap-2 mt-4 sm:mt-6">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1 || isLoading}
+              className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
             >
               Previous
             </Button>
-            <span className="flex items-center px-3">
+            <span className="flex items-center px-2 sm:px-3 text-xs sm:text-sm">
               Page {currentPage} of {totalPages}
             </span>
             <Button
@@ -249,6 +257,7 @@ export default function AlertsPage() {
               size="sm"
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages || isLoading}
+              className="text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
             >
               Next
             </Button>

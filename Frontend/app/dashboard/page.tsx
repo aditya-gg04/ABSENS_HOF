@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import {
   FileText,
@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   CheckCircle,
   X,
-  Camera,
   ArrowRight,
   Clock,
   Activity,
@@ -21,6 +20,8 @@ import Link from "next/link";
 import { ErrorDisplay } from "@/components/ui/error-display";
 import { ErrorType } from "@/utils/errorHandler";
 import { toast } from "sonner";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
+import { setUser } from "@/lib/slices/authSlice";
 
 // Define interfaces for reported and missing cases based on your data structure
 interface ReportedCase {
@@ -115,6 +116,7 @@ interface UserProfile {
 const DashboardPage: React.FC = () => {
   // Initialize router for navigation
   const router = useRouter();
+  const dispatch = useDispatch();
 
   // Retrieve authenticated user from Redux store; fallback to mockUserData if not available
   const loggedInUser = useSelector((state: RootState) => state.auth.user);
@@ -236,6 +238,9 @@ const DashboardPage: React.FC = () => {
         };
         localStorage.setItem("user", JSON.stringify(updatedUser));
 
+        // Update Redux state
+        dispatch(setUser(updatedUser));
+
         setIsEditingProfile(false);
       } else {
         // Handle error response
@@ -263,6 +268,14 @@ const DashboardPage: React.FC = () => {
     }
   };
 
+  // Handler for avatar changes
+  const handleAvatarChange = (newAvatarUrl: string) => {
+    setEditedProfile(prev => ({
+      ...prev,
+      avatar: newAvatarUrl
+    }));
+  };
+
   // Handler for input changes in the profile form
   const handleInputChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -281,32 +294,26 @@ const DashboardPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow mb-8">
           <div className="p-6">
             {!isEditingProfile ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="relative">
-                    <Image
-                      src={
-                        currentUser.avatar ||
-                        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&q=80"
-                      }
-                      alt={currentUser.fullname}
-                      className="h-24 w-24 rounded-full object-cover"
-                      height={96}
-                      width={96}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 w-full">
+                  <div className="flex-shrink-0">
+                    <AvatarUpload
+                      currentAvatar={currentUser.avatar}
+                      size="md"
                     />
                   </div>
-                  <div className="ml-6">
-                    <h2 className="text-2xl font-bold text-gray-900">
+                  <div className="text-center sm:text-left w-full">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">
                       {currentUser.fullname}
                     </h2>
-                    <p className="text-gray-600">@{currentUser.username}</p>
-                    <p className="text-gray-600">{currentUser.email}</p>
-                    <div className="mt-2 flex items-center">
-                      <span className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
+                    <p className="text-sm sm:text-base text-gray-600 break-words">@{currentUser.username}</p>
+                    <p className="text-sm sm:text-base text-gray-600 break-words">{currentUser.email}</p>
+                    <div className="mt-2 flex justify-center sm:justify-start items-center">
+                      <span className="px-3 py-1 rounded-full text-xs sm:text-sm bg-blue-100 text-blue-800">
                         {currentUser.gender}
                       </span>
                     </div>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-gray-500 text-xs sm:text-sm mt-1">
                       Member since:{" "}
                       {new Date(currentUser.createdAt).toLocaleDateString()}
                     </p>
@@ -314,7 +321,7 @@ const DashboardPage: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsEditingProfile(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm sm:text-base"
                 >
                   Edit Profile
                 </button>
@@ -323,11 +330,11 @@ const DashboardPage: React.FC = () => {
               <div className="relative">
                 <button
                   onClick={() => setIsEditingProfile(false)}
-                  className="absolute right-0 top-0 p-2 hover:bg-gray-100 rounded-full"
+                  className="absolute right-0 top-0 p-2 hover:bg-gray-100 rounded-full z-10"
                 >
-                  <X className="h-5 w-5 text-gray-500" />
+                  <X className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
                 </button>
-                <form onSubmit={handleProfileUpdate} className="mt-4">
+                <form onSubmit={handleProfileUpdate} className="mt-4 sm:mt-6">
                   {error && (
                     <ErrorDisplay
                       error={error}
@@ -339,46 +346,17 @@ const DashboardPage: React.FC = () => {
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col items-center md:items-start">
-                      <div className="relative">
-                        <Image
-                          src={
-                            editedProfile.avatar ||
-                            "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&q=80"
-                          }
-                          alt="Profile"
-                          className="h-24 w-24 rounded-full object-cover"
-                          height={96}
-                          width={96}
-                        />
-                        <label
-                          htmlFor="avatar-upload"
-                          className="absolute bottom-0 right-0 p-1 bg-indigo-600 rounded-full text-white cursor-pointer hover:bg-indigo-700"
-                        >
-                          <Camera className="h-4 w-4" />
-                        </label>
-                        <input
-                          id="avatar-upload"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              // Handle image upload here (e.g., call your API)
-                              // console.log("File selected:", file);
-                            }
-                          }}
-                        />
-                      </div>
-                      <p className="text-sm text-gray-500 mt-2">
-                        Click the camera icon to update your photo
-                      </p>
+                      <AvatarUpload
+                        currentAvatar={editedProfile.avatar}
+                        onAvatarChange={handleAvatarChange}
+                        size="md"
+                      />
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-4 w-full">
                       <div>
                         <label
                           htmlFor="fullname"
-                          className="block text-sm font-medium text-gray-700"
+                          className="block text-xs sm:text-sm font-medium text-gray-700"
                         >
                           Full Name
                         </label>
@@ -388,14 +366,14 @@ const DashboardPage: React.FC = () => {
                           name="fullname"
                           value={editedProfile.fullname}
                           onChange={handleInputChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs sm:text-sm"
                           required
                         />
                       </div>
                       <div>
                         <label
                           htmlFor="email"
-                          className="block text-sm font-medium text-gray-700"
+                          className="block text-xs sm:text-sm font-medium text-gray-700"
                         >
                           Email
                         </label>
@@ -405,14 +383,14 @@ const DashboardPage: React.FC = () => {
                           name="email"
                           value={editedProfile.email}
                           onChange={handleInputChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs sm:text-sm"
                           required
                         />
                       </div>
                       <div>
                         <label
                           htmlFor="gender"
-                          className="block text-sm font-medium text-gray-700"
+                          className="block text-xs sm:text-sm font-medium text-gray-700"
                         >
                           Gender
                         </label>
@@ -421,30 +399,30 @@ const DashboardPage: React.FC = () => {
                           name="gender"
                           value={editedProfile.gender}
                           onChange={handleInputChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs sm:text-sm"
                         >
                           <option value="Male">Male</option>
                           <option value="Female">Female</option>
                           <option value="Others">Others</option>
                         </select>
                       </div>
-                      <div className="flex justify-end space-x-3 pt-4">
+                      <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4">
                         <button
                           type="button"
                           onClick={() => setIsEditingProfile(false)}
-                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                          className="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
                           disabled={isLoading}
-                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+                          className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center text-xs sm:text-sm"
                         >
                           {isLoading ? (
                             <>
                               <span className="animate-spin mr-2">
-                                <svg className="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <svg className="h-3 w-3 sm:h-4 sm:w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
