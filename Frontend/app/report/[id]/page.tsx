@@ -125,19 +125,28 @@ export default function ReportDetailPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-10">
-        <Loader size="lg" />
+      <div className="container mx-auto py-10 flex justify-center items-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="mx-auto flex justify-center">
+            <Loader size="lg" />
+          </div>
+          <p className="mt-4 text-muted-foreground">Loading report details...</p>
+        </div>
       </div>
     );
   }
 
   if (!report) {
     return (
-      <div className="container mx-auto py-10">
-        <p>No report data found.</p>
-        <Button onClick={() => router.push("/my-reports")}>
-          Back to My Reported Cases
-        </Button>
+      <div className="container mx-auto py-6 sm:py-8 md:py-10 px-4 sm:px-6 md:px-8 lg:px-12 max-w-7xl">
+        <div className="bg-white rounded-lg shadow p-6 text-center">
+          <h2 className="text-xl font-semibold mb-4">No Report Data Found</h2>
+          <p className="text-gray-500 mb-6">The requested report information could not be found.</p>
+          <Button onClick={() => router.push("/my-reports")} className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to My Reported Cases
+          </Button>
+        </div>
       </div>
     );
   }
@@ -191,8 +200,14 @@ export default function ReportDetailPage() {
                         alt={`Photo ${index + 1}`}
                         fill
                         sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, (max-width: 1024px) 25vw, 300px"
-                        className="rounded-lg object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="rounded-lg object-cover object-[center_25%] transition-transform duration-300 group-hover:scale-105"
                         priority
+                        onError={(e) => {
+                          // When image fails to load, replace with placeholder
+                          const target = e.target as HTMLImageElement;
+                          target.onerror = null; // Prevent infinite loop
+                          target.src = "/placeholder.svg";
+                        }}
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
                         <Maximize2 className="text-white h-6 w-6 sm:h-8 sm:w-8" />
@@ -217,7 +232,12 @@ export default function ReportDetailPage() {
               >
                 {isSearching ? (
                   <span className="flex items-center gap-2">
-                    <Loader size="sm" />
+                    <div className="animate-spin">
+                      <svg className="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
                     <span>Searching...</span>
                   </span>
                 ) : (
@@ -235,8 +255,15 @@ export default function ReportDetailPage() {
           {isSearching && (
             <div className="mt-6 flex justify-center">
               <div className="p-8 text-center">
-                <Loader size="lg" />
-                <p className="mt-4 text-muted-foreground">Searching for matches...</p>
+                <div className="animate-pulse">
+                  <Loader size="lg" />
+                </div>
+                <p className="mt-4 text-muted-foreground animate-pulse">
+                  Searching for matches in our database...
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  This may take a moment as we analyze images
+                </p>
               </div>
             </div>
           )}
@@ -267,13 +294,19 @@ export default function ReportDetailPage() {
             {selectedImage && (
               <div className="relative w-full max-h-[85vh] flex items-center justify-center p-2 sm:p-4">
                 <Image
-                  src={selectedImage}
+                  src={selectedImage || "/placeholder.svg"}
                   alt="Enlarged photo"
                   width={1200}
                   height={800}
                   sizes="(max-width: 640px) 95vw, (max-width: 768px) 90vw, (max-width: 1024px) 85vw, 1200px"
                   className="object-contain max-h-[85vh] rounded-lg shadow-xl"
                   priority
+                  onError={(e) => {
+                    // When image fails to load, replace with placeholder
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null; // Prevent infinite loop
+                    target.src = "/placeholder.svg";
+                  }}
                 />
               </div>
             )}
@@ -336,7 +369,13 @@ const MatchingResult = ({ result }: { result: any | null }) => {
                         alt={`Missing person photo ${photoIndex + 1}`}
                         fill
                         sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, (max-width: 1024px) 25vw, 200px"
-                        className="rounded-lg object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="rounded-lg object-cover object-[center_25%] transition-transform duration-300 group-hover:scale-105"
+                        onError={(e) => {
+                          // When image fails to load, replace with placeholder
+                          const target = e.target as HTMLImageElement;
+                          target.onerror = null; // Prevent infinite loop
+                          target.src = "/placeholder.svg";
+                        }}
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
                         <Maximize2 className="text-white h-5 w-5 sm:h-6 sm:w-6" />
@@ -364,13 +403,19 @@ const MatchingResult = ({ result }: { result: any | null }) => {
             {selectedMatchImage && (
               <div className="relative w-full max-h-[85vh] flex items-center justify-center p-2 sm:p-4">
                 <Image
-                  src={selectedMatchImage}
+                  src={selectedMatchImage || "/placeholder.svg"}
                   alt="Enlarged photo"
                   width={1200}
                   height={800}
                   sizes="(max-width: 640px) 95vw, (max-width: 768px) 90vw, (max-width: 1024px) 85vw, 1200px"
                   className="object-contain max-h-[85vh] rounded-lg shadow-xl"
                   priority
+                  onError={(e) => {
+                    // When image fails to load, replace with placeholder
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null; // Prevent infinite loop
+                    target.src = "/placeholder.svg";
+                  }}
                 />
               </div>
             )}

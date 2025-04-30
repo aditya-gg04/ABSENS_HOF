@@ -197,7 +197,7 @@ export default function MissingPersonDetailPage() {
                   {person.photos.map((photo: string, index: number) => (
                     <div
                       key={index}
-                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow"
+                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow bg-gray-100"
                       onClick={() => setSelectedImage(photo)}
                     >
                       <Image
@@ -205,8 +205,14 @@ export default function MissingPersonDetailPage() {
                         alt={`Photo ${index + 1}`}
                         fill
                         sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, (max-width: 1024px) 25vw, 300px"
-                        className="rounded-lg object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="rounded-lg object-cover object-[center_25%] transition-transform duration-300 group-hover:scale-105"
                         priority
+                        onError={(e) => {
+                          // When image fails to load, replace with placeholder
+                          const target = e.target as HTMLImageElement;
+                          target.onerror = null; // Prevent infinite loop
+                          target.src = "/placeholder.svg";
+                        }}
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
                         <Maximize2 className="text-white h-6 w-6 sm:h-8 sm:w-8" />
@@ -293,13 +299,19 @@ export default function MissingPersonDetailPage() {
             {selectedImage && (
               <div className="relative w-full max-h-[85vh] flex items-center justify-center p-2 sm:p-4">
                 <Image
-                  src={selectedImage}
+                  src={selectedImage || "/placeholder.svg"}
                   alt="Enlarged photo"
                   width={1200}
                   height={800}
                   sizes="(max-width: 640px) 95vw, (max-width: 768px) 90vw, (max-width: 1024px) 85vw, 1200px"
                   className="object-contain max-h-[85vh] rounded-lg shadow-xl"
                   priority
+                  onError={(e) => {
+                    // When image fails to load, replace with placeholder
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null; // Prevent infinite loop
+                    target.src = "/placeholder.svg";
+                  }}
                 />
               </div>
             )}
@@ -356,7 +368,13 @@ const MatchingResult = ({ result }: { result: any | null }) => {
                         alt={`Reported photo ${photoIndex + 1}`}
                         fill
                         sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, (max-width: 1024px) 25vw, 200px"
-                        className="rounded-lg object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="rounded-lg object-cover object-[center_25%] transition-transform duration-300 group-hover:scale-105"
+                        onError={(e) => {
+                          // When image fails to load, replace with placeholder
+                          const target = e.target as HTMLImageElement;
+                          target.onerror = null; // Prevent infinite loop
+                          target.src = "/placeholder.svg";
+                        }}
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
                         <Maximize2 className="text-white h-5 w-5 sm:h-6 sm:w-6" />
@@ -384,13 +402,19 @@ const MatchingResult = ({ result }: { result: any | null }) => {
             {selectedMatchImage && (
               <div className="relative w-full max-h-[85vh] flex items-center justify-center p-2 sm:p-4">
                 <Image
-                  src={selectedMatchImage}
+                  src={selectedMatchImage || "/placeholder.svg"}
                   alt="Enlarged photo"
                   width={1200}
                   height={800}
                   sizes="(max-width: 640px) 95vw, (max-width: 768px) 90vw, (max-width: 1024px) 85vw, 1200px"
                   className="object-contain max-h-[85vh] rounded-lg shadow-xl"
                   priority
+                  onError={(e) => {
+                    // When image fails to load, replace with placeholder
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null; // Prevent infinite loop
+                    target.src = "/placeholder.svg";
+                  }}
                 />
               </div>
             )}

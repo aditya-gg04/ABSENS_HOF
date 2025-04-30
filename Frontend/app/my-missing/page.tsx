@@ -5,8 +5,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Search, MapPin, Calendar, ArrowRight, Eye, User, Image as ImageIcon } from "lucide-react";
+import { MapPin, Eye, User, Image as ImageIcon, Search } from "lucide-react";
 import Image from "next/image";
 import { setSelectedMissingPerson } from "@/lib/slices/dataSlice"; // Redux action
 
@@ -102,88 +101,79 @@ export default function MyMissingPersonsPage() {
       ) : (
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {missingPersons.map((person) => (
-            <Card
+            <div
               key={person._id}
-              className="overflow-hidden hover:shadow-md transition-shadow flex flex-col"
+              className="group relative rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => handleViewDetails(person)}
             >
-              {person.photos && person.photos.length > 0 ? (
-                <div className="relative w-full h-48 overflow-hidden">
-                  <Image
-                    src={person.photos[0]}
-                    alt={`Photo of ${person.name}`}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    className="object-cover transition-transform duration-300 hover:scale-105"
-                    priority
-                  />
-                  {person.photos.length > 1 && (
-                    <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center">
-                      <ImageIcon className="h-3 w-3 mr-1" />
-                      +{person.photos.length - 1}
+              {/* Image Container - Larger and more prominent */}
+              <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-100">
+                {person.photos && person.photos.length > 0 ? (
+                  <>
+                    <Image
+                      src={person.photos[0] || "/placeholder.svg"}
+                      alt={`Photo of ${person.name}`}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      priority
+                      onError={(e) => {
+                        // When image fails to load, replace with placeholder
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null; // Prevent infinite loop
+                        target.src = "/placeholder.svg";
+                      }}
+                    />
+                    {person.photos.length > 1 && (
+                      <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center">
+                        <ImageIcon className="h-3 w-3 mr-1" />
+                        +{person.photos.length - 1}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="text-center text-gray-400">
+                      <ImageIcon className="h-12 w-12 mx-auto mb-2" />
+                      <p className="text-sm">No photos</p>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
-                  <div className="text-center text-gray-400">
-                    <ImageIcon className="h-8 w-8 mx-auto mb-2" />
-                    <p className="text-xs">No photos</p>
+                  </div>
+                )}
+
+                {/* Overlay with essential info */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                  <h3 className="text-white font-semibold text-lg truncate mb-1">{person.name}</h3>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-white/90 text-xs">
+                    <span className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      Age: {person.age}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {person.lastSeenLocation}
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
 
-              <CardHeader className="p-4 sm:p-6 pb-0 sm:pb-0">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <Search className="h-5 w-5 text-red-500 flex-shrink-0" />
-                  <span className="truncate">{person.name}</span>
-                </CardTitle>
-              </CardHeader>
-
-              <CardContent className="p-4 sm:p-6 pt-3 sm:pt-3 flex-grow">
-                <div className="space-y-2 mb-4">
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <User className="h-4 w-4 flex-shrink-0" />
-                    <span>Age: {person.age}</span>
-                  </p>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <MapPin className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{person.lastSeenLocation}</span>
-                  </p>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Calendar className="h-4 w-4 flex-shrink-0" />
-                    <span>{new Date(person.missingDate).toLocaleDateString()}</span>
-                  </p>
-                </div>
-                <div className="h-[60px] overflow-hidden mb-2">
-                  <p className="text-sm text-gray-700">
-                    {person.description.length > 100
-                      ? `${person.description.slice(0, 100)}...`
-                      : person.description}
-                  </p>
-                </div>
-              </CardContent>
-
-              <CardFooter className="p-4 sm:p-6 pt-0 sm:pt-0">
-                <div className="w-full flex justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-primary hover:text-primary/80 p-0 h-auto font-medium"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewDetails(person);
-                    }}
-                  >
-                    <span className="flex items-center gap-1">
-                      <Eye className="h-4 w-4" />
-                      View Details
-                      <ArrowRight className="h-4 w-4 ml-1" />
-                    </span>
-                  </Button>
-                </div>
-              </CardFooter>
-            </Card>
+              {/* View Details Button - Overlay on hover */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white/90 hover:bg-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewDetails(person);
+                  }}
+                >
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-4 w-4" />
+                    View Details
+                  </span>
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
       )}

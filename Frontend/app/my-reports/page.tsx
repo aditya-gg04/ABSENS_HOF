@@ -5,8 +5,7 @@ import { useSelector } from "react-redux"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Loader } from "@/components/ui/loader"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { AlertTriangle, MapPin, Calendar, ArrowRight, Eye, Image as ImageIcon } from "lucide-react"
+import { AlertTriangle, MapPin, Calendar, Eye, Image as ImageIcon } from "lucide-react"
 import Image from "next/image"
 
 interface ReportedCase {
@@ -95,84 +94,82 @@ export default function MyReportsPage() {
       ) : (
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {reports.map((report) => (
-            <Card
+            <div
               key={report._id}
-              className="overflow-hidden hover:shadow-md transition-shadow flex flex-col"
+              className="group relative rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => router.push(`/report/${report._id}`)}
             >
-              {report.photos && report.photos.length > 0 ? (
-                <div className="relative w-full h-48 overflow-hidden">
-                  <Image
-                    src={report.photos[0]}
-                    alt={`Photo of ${report.name || "reported case"}`}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    className="object-cover transition-transform duration-300 hover:scale-105"
-                    priority
-                  />
-                  {report.photos.length > 1 && (
-                    <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center">
-                      <ImageIcon className="h-3 w-3 mr-1" />
-                      +{report.photos.length - 1}
+              {/* Image Container - Larger and more prominent */}
+              <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-100">
+                {report.photos && report.photos.length > 0 ? (
+                  <>
+                    <Image
+                      src={report.photos[0] || "/placeholder.svg"}
+                      alt={`Photo of ${report.name || "reported case"}`}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      priority
+                      onError={(e) => {
+                        // When image fails to load, replace with placeholder
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null; // Prevent infinite loop
+                        target.src = "/placeholder.svg";
+                      }}
+                    />
+                    {report.photos.length > 1 && (
+                      <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center">
+                        <ImageIcon className="h-3 w-3 mr-1" />
+                        +{report.photos.length - 1}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="text-center text-gray-400">
+                      <ImageIcon className="h-12 w-12 mx-auto mb-2" />
+                      <p className="text-sm">No photos</p>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
-                  <div className="text-center text-gray-400">
-                    <ImageIcon className="h-8 w-8 mx-auto mb-2" />
-                    <p className="text-xs">No photos</p>
+                  </div>
+                )}
+
+                {/* Overlay with essential info */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle className="h-4 w-4 text-yellow-300 flex-shrink-0" />
+                    <h3 className="text-white font-semibold text-lg truncate">{report.name || "Unknown Person"}</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-white/90 text-xs">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {report.location}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(report.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
 
-              <CardHeader className="p-4 sm:p-6 pb-0 sm:pb-0">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0" />
-                  <span className="truncate">{report.name || "Unknown Person"}</span>
-                </CardTitle>
-              </CardHeader>
-
-              <CardContent className="p-4 sm:p-6 pt-3 sm:pt-3 flex-grow">
-                <div className="space-y-2 mb-4">
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <MapPin className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{report.location}</span>
-                  </p>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Calendar className="h-4 w-4 flex-shrink-0" />
-                    <span>{new Date(report.createdAt).toLocaleDateString()}</span>
-                  </p>
-                </div>
-                <div className="h-[60px] overflow-hidden mb-2">
-                  <p className="text-sm text-gray-700">
-                    {report.description.length > 100
-                      ? `${report.description.slice(0, 100)}...`
-                      : report.description}
-                  </p>
-                </div>
-              </CardContent>
-
-              <CardFooter className="p-4 sm:p-6 pt-0 sm:pt-0">
-                <div className="w-full flex justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-primary hover:text-primary/80 p-0 h-auto font-medium"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`/report/${report._id}`);
-                    }}
-                  >
-                    <span className="flex items-center gap-1">
-                      <Eye className="h-4 w-4" />
-                      View Details
-                      <ArrowRight className="h-4 w-4 ml-1" />
-                    </span>
-                  </Button>
-                </div>
-              </CardFooter>
-            </Card>
+              {/* View Details Button - Overlay on hover */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white/90 hover:bg-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/report/${report._id}`);
+                  }}
+                >
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-4 w-4" />
+                    View Details
+                  </span>
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
       )}
