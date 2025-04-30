@@ -4,7 +4,8 @@ import {
     getUserNotifications,
     markNotificationsAsRead,
     deleteNotification,
-    getUnreadCount
+    getUnreadCount,
+    sendMatchAlert
 } from '../controllers/notification.controller.js';
 
 const router = express.Router();
@@ -20,5 +21,8 @@ router.put('/mark-read', verifyToken, markNotificationsAsRead);
 
 // Delete a notification
 router.delete('/:id', verifyToken, deleteNotification);
+
+// Send match alert
+router.post('/match-alert', verifyToken, sendMatchAlert);
 
 export default router;
