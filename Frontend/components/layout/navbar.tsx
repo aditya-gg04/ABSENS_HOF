@@ -6,9 +6,19 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useDispatch, useSelector } from "react-redux";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Menu, AlertTriangle } from "lucide-react";
+import { Menu, AlertTriangle, LogOut } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 
 import { Loader } from "@/components/ui/loader";
 import { logout } from "@/lib/slices/authSlice";
@@ -19,6 +29,7 @@ export default function Navbar() {
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   // Use the global auth state instead of local state.
   const user = useSelector((state: { auth: { user: any } }) => state.auth.user);
@@ -33,10 +44,16 @@ export default function Navbar() {
     setLoading(true);
   };
 
+  // Open the logout confirmation dialog
+  const openLogoutDialog = () => {
+    setShowLogoutDialog(true);
+  };
+
   // Handle logout by dispatching the logout action and then redirecting.
   const handleLogout = () => {
     dispatch(logout());
     router.push("/");
+    setShowLogoutDialog(false);
   };
 
   // Base routes always visible.
@@ -106,6 +123,22 @@ export default function Navbar() {
                   {route.label}
                 </Link>
               ))}
+
+              {/* Mobile Logout Button */}
+              {isLoggedIn && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="mt-4 text-sm"
+                  onClick={() => {
+                    setOpen(false);
+                    openLogoutDialog();
+                  }}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              )}
             </nav>
           </SheetContent>
         </Sheet>
@@ -140,14 +173,38 @@ export default function Navbar() {
         <div className="flex items-center ml-auto space-x-2">
           {isLoggedIn && <NotificationBell />}
           {isLoggedIn ? (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="text-xs sm:text-sm"
-              onClick={handleLogout}
-            >
-              Logout
-            </Button>
+            <>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="text-xs sm:text-sm"
+                onClick={openLogoutDialog}
+              >
+                <LogOut className="h-4 w-4 mr-1" />
+                Logout
+              </Button>
+
+              {/* Logout Confirmation Dialog */}
+              <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure you want to logout?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You will need to login again to access your account and submit reports.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleLogout}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Logout
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
           ) : (
             <Button
               variant="secondary"
