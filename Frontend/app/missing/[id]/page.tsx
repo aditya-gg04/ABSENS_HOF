@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, MapPin, Calendar, User, X, Maximize2, ArrowLeft } from "lucide-react";
+import { Search, MapPin, Calendar, User, X, Maximize2, ArrowLeft, Bell, AlertTriangle } from "lucide-react";
 import Image from "next/image";
 import { Loader } from "@/components/ui/loader";
-import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PageLoader } from "@/components/ui/page-loader";
+import { sendMatchAlert } from "@/services/notification.service";
+import { useToast } from "@/hooks/use-toast";
 
 interface MissingPerson {
   _id: string;
@@ -326,10 +328,47 @@ export default function MissingPersonDetailPage() {
 
 const MatchingResult = ({ result }: { result: any | null }) => {
   const [selectedMatchImage, setSelectedMatchImage] = useState<string | null>(null);
+  const [showAlertDialog, setShowAlertDialog] = useState(false);
+  const [isSendingAlert, setIsSendingAlert] = useState(false);
+  const { toast } = useToast();
+  const { id: missingPersonId } = useParams();
 
   if (!result) {
     return <p className="text-center text-gray-500">No matches found.</p>;
   }
+
+  const handleSendAlert = async () => {
+    if (!missingPersonId || !result._id) return;
+
+    setIsSendingAlert(true);
+    try {
+      const success = await sendMatchAlert(missingPersonId as string, result._id);
+
+      if (success) {
+        toast({
+          title: "Alert sent successfully",
+          description: "The alert has been sent to the profile.",
+          variant: "default",
+        });
+        setShowAlertDialog(false);
+      } else {
+        toast({
+          title: "Failed to send alert",
+          description: "There was an error sending the alert. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error sending alert:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingAlert(false);
+    }
+  };
 
   return (
     <div className="mt-6 sm:mt-8">
@@ -355,6 +394,16 @@ const MatchingResult = ({ result }: { result: any | null }) => {
                 <h4 className="font-medium mb-2 text-sm sm:text-base">Description</h4>
                 <p className="text-sm sm:text-base text-gray-700 whitespace-pre-line">{result.description}</p>
               </div>
+
+              {/* Send Alert Button */}
+              <Button
+                onClick={() => setShowAlertDialog(true)}
+                className="w-full flex items-center justify-center gap-2"
+                variant="secondary"
+              >
+                <Bell className="h-4 w-4" />
+                <span>Send Alert</span>
+              </Button>
             </div>
             <div>
               {result.photos && result.photos.length > 0 ? (
@@ -421,6 +470,38 @@ const MatchingResult = ({ result }: { result: any | null }) => {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Alert Confirmation Dialog */}
+      <Dialog open={showAlertDialog} onOpenChange={setShowAlertDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogTitle>Send Alert</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to send an alert for this match? This will notify relevant parties about the potential match.
+          </DialogDescription>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => setShowAlertDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendAlert}
+              disabled={isSendingAlert}
+              className="flex items-center gap-2"
+            >
+              {isSendingAlert ? (
+                <>
+                  <Loader size="sm" />
+                  <span>Sending...</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>Send Alert</span>
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

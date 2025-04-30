@@ -28,7 +28,9 @@ export const metadata: Metadata = {
     width: "device-width",
     initialScale: 1,
     maximumScale: 5,
+    minimumScale: 0.5,
     userScalable: true,
+    viewportFit: "cover",
   },
 };
 
@@ -39,16 +41,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, minimum-scale=0.5, user-scalable=yes, viewport-fit=cover" />
+      </head>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {/* Wrap content with ClientProviders */}
           <ClientProviders>
             {/* Insert the client component that handles token refresh */}
             <RefreshTokenProvider />
-            <div className="flex min-h-screen flex-col">
+            <div className="flex min-h-screen flex-col w-full max-w-full overflow-x-hidden">
               <Navbar />
               <Suspense fallback={<Loader size="lg" />}>
-                <main className="flex-1">
+                <main className="flex-1 w-full max-w-full overflow-x-hidden">
                   <PageErrorBoundary>
                     {children}
                   </PageErrorBoundary>

@@ -22,6 +22,31 @@ export const fetchNotifications = async (page = 1, limit = 10): Promise<{ notifi
   }
 };
 
+export const sendMatchAlert = async (missingPersonId: string, matchId: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_URL}/notifications/match-alert`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+      },
+      body: JSON.stringify({
+        missingPersonId,
+        matchId
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to send match alert");
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error sending match alert:", error);
+    return false;
+  }
+};
+
 export const fetchUnreadCount = async (): Promise<number> => {
   try {
     const response = await fetch(`${API_URL}/notifications/unread-count`, {
