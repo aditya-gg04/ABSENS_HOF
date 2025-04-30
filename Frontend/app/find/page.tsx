@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { Loader } from "@/components/ui/loader";
 import { useSelector } from "react-redux";
 import { AuthRequiredPrompt } from "@/components/ui/auth-required-prompt";
+import { PageLoader } from "@/components/ui/page-loader";
 
 type MissingPerson = {
   _id: string;
@@ -27,17 +28,25 @@ export default function FindPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingFastAPI, setIsProcessingFastAPI] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   // Get authentication state from Redux
   const isLoggedIn = useSelector((state: { auth: { isLoggedIn: boolean } }) => state.auth.isLoggedIn);
 
-  // Fetch access token from localStorage
+  // Fetch access token from localStorage and handle page loading
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (token) {
       setAccessToken(token);
     }
+
+    // Simulate loading delay
+    const timer = setTimeout(() => {
+      setIsPageLoading(false);
+    }, 800);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const [formData, setFormData] = useState({
@@ -158,6 +167,10 @@ export default function FindPage() {
       setIsProcessingFastAPI(false);
     }
   };
+
+  if (isPageLoading) {
+    return <PageLoader message="Loading form..." />;
+  }
 
   return (
     <div className="container px-4 sm:px-6 md:px-8 py-6 sm:py-10 max-w-full overflow-x-hidden">

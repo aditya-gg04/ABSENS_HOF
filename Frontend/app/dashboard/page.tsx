@@ -22,6 +22,7 @@ import { ErrorType } from "@/utils/errorHandler";
 import { toast } from "sonner";
 import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { setUser } from "@/lib/slices/authSlice";
+import { PageLoader } from "@/components/ui/page-loader";
 
 // Define interfaces for reported and missing cases based on your data structure
 interface ReportedCase {
@@ -126,6 +127,7 @@ const DashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
   const [error, setError] = useState<{ message: string; type?: ErrorType } | null>(null);
   const [editedProfile, setEditedProfile] = useState<UserProfile>({
     fullname: currentUser.fullname,
@@ -178,6 +180,16 @@ const DashboardPage: React.FC = () => {
         "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&q=80",
     });
   }, [currentUser]);
+
+  // Simulate loading state for demonstration
+  useEffect(() => {
+    // Simulate API call or data loading
+    const timer = setTimeout(() => {
+      setIsPageLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Handler for updating the profile
   const handleProfileUpdate = async (e: FormEvent<HTMLFormElement>) => {
@@ -286,6 +298,10 @@ const DashboardPage: React.FC = () => {
       [name]: value,
     }));
   };
+
+  if (isPageLoading) {
+    return <PageLoader message="Loading your dashboard..." />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

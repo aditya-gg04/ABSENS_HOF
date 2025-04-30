@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation"
 import { Loader } from "@/components/ui/loader"
 import { useSelector } from "react-redux"
 import { AuthRequiredPrompt } from "@/components/ui/auth-required-prompt"
+import { PageLoader } from "@/components/ui/page-loader"
 
 // Define types
 interface SearchResult {
@@ -49,18 +50,26 @@ export default function ReportPage() {
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isProcessingFastAPI, setIsProcessingFastAPI] = useState(false)
+  const [isPageLoading, setIsPageLoading] = useState(true)
   const router = useRouter()
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL
 
   // Get authentication state from Redux
   const isLoggedIn = useSelector((state: { auth: { isLoggedIn: boolean } }) => state.auth.isLoggedIn)
 
-  // Fetch access token from localStorage
+  // Fetch access token from localStorage and handle page loading
   useEffect(() => {
     const token = localStorage.getItem("accessToken")
     if (token) {
       setAccessToken(token)
     }
+
+    // Simulate loading delay
+    const timer = setTimeout(() => {
+      setIsPageLoading(false)
+    }, 800)
+
+    return () => clearTimeout(timer)
   }, [])
 
   // Handle input change
@@ -179,6 +188,14 @@ export default function ReportPage() {
     }
   }
 
+  if (isPageLoading) {
+    return (
+      <PageLoader
+        message="Loading report form..."
+      />
+    );
+  }
+
   return (
     <div className="container px-4 sm:px-6 md:px-8 py-6 sm:py-10 max-w-full overflow-x-hidden">
       <div className="w-full max-w-3xl mx-auto space-y-4 sm:space-y-6">
@@ -284,9 +301,18 @@ export default function ReportPage() {
 
         {/* Loader for FastAPI processing */}
         {isProcessingFastAPI && (
-          <div className="text-center mt-4 text-sm w-full">
-            <Loader size="sm" />
-            <span className="ml-2">Processing image recognition...</span>
+          <div className="text-center mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100 w-full">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="animate-pulse">
+                <Loader size="sm" />
+              </div>
+              <span className="text-sm sm:text-base font-medium text-blue-700 animate-pulse">
+                Processing image recognition...
+              </span>
+            </div>
+            <p className="text-xs text-blue-600">
+              We&apos;re analyzing your images with our AI system. This may take a moment.
+            </p>
           </div>
         )}
 
@@ -308,7 +334,12 @@ export default function ReportPage() {
           >
             {isSubmitting ? (
               <div className="flex items-center justify-center gap-2">
-                <Loader size="sm" />
+                <div className="animate-spin">
+                  <svg className="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
                 <span className="text-sm sm:text-base">Submitting report...</span>
               </div>
             ) : !isLoggedIn ? (
@@ -316,7 +347,7 @@ export default function ReportPage() {
             ) : (
               <>
                 <SearchIcon className="h-4 w-4 flex-shrink-0" />
-                <span className="text-sm sm:text-base">Submit</span>
+                <span className="text-sm sm:text-base">Submit Report</span>
               </>
             )}
           </Button>

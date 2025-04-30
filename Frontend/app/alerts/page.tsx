@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Notification } from "@/lib/slices/dataSlice";
+import { PageLoader } from "@/components/ui/page-loader";
 
 export default function AlertsPage() {
   const dispatch = useDispatch();
@@ -29,6 +30,7 @@ export default function AlertsPage() {
   const { notifications } = useSelector((state: RootState) => state.data);
   const { isLoggedIn } = useSelector((state: RootState) => state.auth);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPageLoading, setIsPageLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [activeTab, setActiveTab] = useState("all");
@@ -49,6 +51,7 @@ export default function AlertsPage() {
         console.error("Error loading notifications:", error);
       } finally {
         setIsLoading(false);
+        setIsPageLoading(false);
       }
     };
 
@@ -111,6 +114,10 @@ export default function AlertsPage() {
   const filteredNotifications = activeTab === "all"
     ? notifications
     : notifications.filter(notification => notification.type === activeTab);
+
+  if (isPageLoading) {
+    return <PageLoader message="Loading notifications..." />;
+  }
 
   return (
     <div className="container py-6 sm:py-10 min-h-screen">
