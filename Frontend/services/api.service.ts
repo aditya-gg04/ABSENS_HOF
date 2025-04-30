@@ -75,18 +75,28 @@ export const apiService = {
     }
 
     // Default headers
-    const headers: HeadersInit = {
+    const headersObj: Record<string, string> = {
       "Content-Type": "application/json",
-      ...customConfig.headers,
     };
+
+    // Add custom headers if provided
+    if (customConfig.headers) {
+      const customHeaders = customConfig.headers as Record<string, string>;
+      Object.keys(customHeaders).forEach(key => {
+        headersObj[key] = customHeaders[key];
+      });
+    }
 
     // Add auth token if required
     if (requiresAuth) {
       const token = localStorage.getItem("accessToken");
       if (token) {
-        headers.Authorization = `Bearer ${token}`;
+        headersObj["Authorization"] = `Bearer ${token}`;
       }
     }
+
+    // Convert to HeadersInit
+    const headers: HeadersInit = headersObj;
 
     // Prepare config
     const config: RequestInit = {
@@ -109,7 +119,7 @@ export const apiService = {
 
       // Make the request
       const response = await fetch(url.toString(), config);
-      
+
       // Parse the response
       let data;
       const contentType = response.headers.get("content-type");
