@@ -36,17 +36,25 @@ const OTP = mongoose.model('OTP', otpSchema);
 const generateOTP = async (req, res) =>{
     const { email } = req.body;
 
+    if (!email) {
+        return ApiResponse.error(res, {
+            statusCode: 400,
+            message: 'Email is required',
+            error: 'Please provide an email address'
+        });
+    }
+
     const otp = otpGenerator.generate(6, {
         digits: true,
-        lowerCaseAlphabets: false, // ✅ Corrected
-        upperCaseAlphabets: false, // ✅ Corrected
+        lowerCaseAlphabets: false,
+        upperCaseAlphabets: false,
         specialChars: false,
     });
 
     try {
         await OTP.create({ email, otp });
 
-        // Send OTP via email (replace with your email sending logic)
+        // Send OTP via email
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
@@ -63,15 +71,26 @@ const generateOTP = async (req, res) =>{
         });
 
         if (response.rejected.length > 0) {
-            throw new ApiError(500, 'Failed to send OTP');
+            return ApiResponse.error(res, {
+                statusCode: 500,
+                message: 'Failed to send OTP',
+                error: 'Email delivery failed'
+            });
         }
-        // console.log(response)
 
-        return res.status(200).json(new ApiResponse(200, "OTP sent"));
+        return ApiResponse.success(res, {
+            statusCode: 200,
+            message: 'OTP sent successfully',
+            data: { email }
+        });
 
     } catch (error) {
         console.error(error);
-        res.status(500).send('Error sending OTP');
+        return ApiResponse.error(res, {
+            statusCode: 500,
+            message: 'Error sending OTP',
+            error: error.message
+        });
     }
 }
 
@@ -83,13 +102,25 @@ const verifyOtp = async (req, res) => {
         // console.log(otpRecord)
 
         if (otpRecord) {
-            res.status(200).send('OTP verified successfully');
+            return ApiResponse.success(res, {
+                statusCode: 200,
+                message: 'OTP verified successfully',
+                data: { verified: true }
+            });
         } else {
-            res.status(400).send('Invalid OTP');
+            return ApiResponse.error(res, {
+                statusCode: 400,
+                message: 'Invalid OTP',
+                error: 'The OTP you entered is incorrect or has expired'
+            });
         }
     } catch (error) {
         console.error(error);
-        res.status(500).send('Error verifying OTP');
+        return ApiResponse.error(res, {
+            statusCode: 500,
+            message: 'Error verifying OTP',
+            error: error.message
+        });
     }
 }
 
@@ -177,70 +208,101 @@ const registerUser = async (req, res) => {
 };
 
 const loginUser = asyncHandler(async (req, res) => {
-    const { password, email } = req.body;
-    // console.log(req.body);
+    try {
+        const { password, email } = req.body;
 
-    const extractedUsername = email.split('@')[0];
-    const username = extractedUsername;
+        // Validate input
+        if (!email) {
+            return ApiResponse.error(res, {
+                statusCode: 400,
+                message: 'Email is required',
+                error: 'Please provide an email address'
+            });
+        }
 
-    if (!username && !email) {
-        throw new ApiError(400, 'Please provide a username or email');
+        if (!password) {
+            return ApiResponse.error(res, {
+                statusCode: 400,
+                message: 'Password is required',
+                error: 'Please provide a password'
+            });
+        }
+
+        const extractedUsername = email.split('@')[0];
+        const username = extractedUsername;
+
+        // Find user
+        const user = await User.findOne({
+            $or: [{ username }, { email }],
+        });
+
+        // User not found - return 404
+        if (!user) {
+            return ApiResponse.error(res, {
+                statusCode: 404,
+                message: 'User not found',
+                error: 'No account exists with this email address'
+            });
+        }
+
+        // Check password
+        const isMatch = await user.isPasswordCorrect(password);
+
+        // Password doesn't match - return 401
+        if (!isMatch) {
+            return ApiResponse.error(res, {
+                statusCode: 401,
+                message: 'Incorrect password',
+                error: 'The password you entered is incorrect'
+            });
+        }
+
+        // Generate tokens
+        const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+            user._id,
+        );
+
+        // Save the refresh token on the user model
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false });
+
+        // Retrieve the user data without sensitive information
+        const newUser = await User.findById(user._id)
+            .select('-password')
+            .populate('reportedCases missingCases');
+
+        // Error retrieving user data
+        if (!newUser) {
+            return ApiResponse.error(res, {
+                statusCode: 500,
+                message: 'Error logging in user',
+                error: 'Failed to retrieve user data after authentication'
+            });
+        }
+
+        // Cookie options (adjust secure flag for local testing)
+        const options = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+        };
+
+        // Set cookies and return the response
+        res.cookie('refreshToken', refreshToken, options)
+           .cookie('accessToken', accessToken, options);
+
+        return ApiResponse.success(res, {
+            statusCode: 200,
+            message: 'User logged in successfully',
+            data: { user: newUser, accessToken, refreshToken },
+        });
+    } catch (error) {
+        console.error("Login error:", error);
+        return ApiResponse.error(res, {
+            statusCode: 500,
+            message: 'An error occurred during login',
+            error: error.message
+        });
     }
-    if (!password) {
-        throw new ApiError(400, 'Please provide a password');
-    }
-
-    const user = await User.findOne({
-        $or: [{ username }, { email }],
-    });
-    // console.log("user", user);
-    if (!user) {
-        throw new ApiError(404, 'User not found');
-    }
-
-    const isMatch = await user.isPasswordCorrect(password);
-    // console.log("Password match:", isMatch);
-    if (!isMatch) {
-        throw new ApiError(401, 'Invalid credentials');
-    }
-
-    // Generate tokens
-    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
-        user._id,
-    );
-    // console.log("Access Token:", accessToken, "Refresh Token:", refreshToken);
-
-    // Save the refresh token on the user model
-    user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
-
-    // Retrieve the user data without sensitive information
-    const newUser = await User.findById(user._id)
-    .select('-password')
-    .populate('reportedCases missingCases');
-    // console.log("newUser", newUser);
-    if (!newUser) {
-        throw new ApiError(500, 'Error logging in user');
-    }
-
-    // Cookie options (adjust secure flag for local testing)
-    const options = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-    };
-
-    // Set cookies and return the response using the ApiResponse.success static method
-    res.cookie('refreshToken', refreshToken, options).cookie(
-        'accessToken',
-        accessToken,
-        options,
-    );
-
-    return ApiResponse.success(res, {
-        statusCode: 200,
-        message: 'User logged in successfully',
-        data: { user: newUser, accessToken, refreshToken },
-    });
 });
 
 import jwt from 'jsonwebtoken';

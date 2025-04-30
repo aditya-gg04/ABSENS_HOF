@@ -8,7 +8,8 @@ import { Suspense } from "react";
 import { Loader } from "@/components/ui/loader";
 import type React from "react";
 import { ClientProviders } from "@/components/ClientProviders";
-import RefreshTokenProvider from "@/components/RefreshTokenProvider"; // Ensure correct path
+import RefreshTokenProvider from "@/components/RefreshTokenProvider";
+import PageErrorBoundary from "@/components/PageErrorBoundary";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -47,7 +48,11 @@ export default function RootLayout({
             <div className="flex min-h-screen flex-col">
               <Navbar />
               <Suspense fallback={<Loader size="lg" />}>
-                <main className="flex-1">{children}</main>
+                <main className="flex-1">
+                  <PageErrorBoundary>
+                    {children}
+                  </PageErrorBoundary>
+                </main>
               </Suspense>
               <Footer />
             </div>

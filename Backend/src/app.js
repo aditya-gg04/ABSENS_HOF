@@ -4,13 +4,14 @@ import cookieParser from 'cookie-parser';
 import userRouter from './routes/user.route.js';
 import sightingRoutes from './routes/reportMissing.js';
 import missingPersonRoutes from './routes/findMissing.js';
+import notificationRoutes from './routes/notification.route.js';
 import errorHandler from './middlewares/errorHandler.js';
 // import session from 'express-session';
 
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true })); 
- 
+app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+
 
 app.use(express.json());
 app.use(cookieParser());
@@ -32,6 +33,7 @@ app.get('/', (req, res) => {
 app.use('/api/v1/user', userRouter);
 app.use('/api/v1/missing-persons', missingPersonRoutes);
 app.use('/api/v1/sightings', sightingRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 app.use(errorHandler);
 

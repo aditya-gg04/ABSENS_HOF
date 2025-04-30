@@ -5,43 +5,77 @@ const errorHandler = (err, req, res, next) => {
   error.message = err.message;
 
   // Log to console for dev
-  console.error(err.stack.red);
+  console.error("Error:", err.message);
+  console.error("Stack:", err.stack);
+
+  // Determine error type and format response accordingly
+  let statusCode = err.statusCode || 500;
+  let errorMessage = err.message || 'Server Error';
+  let errorDetails = err.errors || null;
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
-    const message = `Resource not found with id of ${err.value}`;
-    return ApiResponse.error(res, 404, message);
+    statusCode = 404;
+    errorMessage = `Resource not found with id of ${err.value}`;
+    errorDetails = 'The requested resource does not exist or has been removed';
   }
 
   // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    const messages = Object.values(err.errors).map(val => val.message);
-    return ApiResponse.error(res, 400, 'Validation Error', messages);
+  else if (err.name === 'ValidationError') {
+    statusCode = 400;
+    errorMessage = 'Validation Error';
+    errorDetails = Object.values(err.errors).map(val => val.message);
   }
 
   // Mongoose duplicate key
-  if (err.code === 11000) {
+  else if (err.code === 11000) {
+    statusCode = 400;
     const field = Object.keys(err.keyValue)[0];
-    const message = `${field} already exists`;
-    return ApiResponse.error(res, 400, message);
+    errorMessage = `${field} already exists`;
+    errorDetails = `The ${field} you provided is already in use`;
   }
 
   // JWT errors
-  if (err.name === 'JsonWebTokenError') {
-    return ApiResponse.error(res, 401, 'Invalid token');
+  else if (err.name === 'JsonWebTokenError') {
+    statusCode = 401;
+    errorMessage = 'Invalid token';
+    errorDetails = 'Your session is invalid. Please log in again.';
   }
 
-  if (err.name === 'TokenExpiredError') {
-    return ApiResponse.error(res, 401, 'Token expired');
+  else if (err.name === 'TokenExpiredError') {
+    statusCode = 401;
+    errorMessage = 'Token expired';
+    errorDetails = 'Your session has expired. Please log in again.';
   }
 
   // Cloudinary errors
-  if (err.name === 'CloudinaryError') {
-    return ApiResponse.error(res, 500, 'File upload failed');
+  else if (err.name === 'CloudinaryError') {
+    statusCode = 500;
+    errorMessage = 'File upload failed';
+    errorDetails = 'There was a problem uploading your file. Please try again.';
   }
 
-  // Default to 500 server error
-  ApiResponse.error(res, error.statusCode || 500, error.message || 'Server Error');
+  // Authentication errors
+  else if (statusCode === 401) {
+    errorDetails = errorDetails || 'Authentication failed. Please check your credentials.';
+  }
+
+  // Not found errors
+  else if (statusCode === 404) {
+    errorDetails = errorDetails || 'The requested resource could not be found.';
+  }
+
+  // Server errors
+  else if (statusCode >= 500) {
+    errorDetails = errorDetails || 'An unexpected error occurred on the server. Please try again later.';
+  }
+
+  // Return formatted error response
+  return ApiResponse.error(res, {
+    statusCode,
+    message: errorMessage,
+    error: errorDetails
+  });
 };
 
 export default errorHandler;

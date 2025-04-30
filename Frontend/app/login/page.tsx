@@ -10,13 +10,15 @@ import { Label } from "@/components/ui/label";
 import { Loader } from "@/components/ui/loader";
 import { AlertTriangle } from "lucide-react";
 import { setUser } from "@/lib/slices/authSlice";
+import { ErrorDisplay } from "@/components/ui/error-display";
+import { ErrorType } from "@/utils/errorHandler";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ message: string; type?: ErrorType; details?: any } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const router = useRouter();
   const dispatch = useDispatch();
   const user = useSelector((state: { auth: { user: any } }) => state.auth.user);
@@ -31,7 +33,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
+    setError(null);
 
     try {
       const response = await fetch(
@@ -44,9 +46,10 @@ export default function LoginPage() {
         }
       );
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
+      console.log("Login response:", data); // For debugging
 
+      if (data.success) {
         // Save user object and tokens in localStorage.
         localStorage.setItem("user", JSON.stringify(data.data.user));
         localStorage.setItem("accessToken", data.data.accessToken);
@@ -57,11 +60,55 @@ export default function LoginPage() {
 
         router.push("/dashboard");
       } else {
-        const data = await response.json();
-        setError(data.message || "Login failed");
+        // Handle API errors with standardized format
+        let errorMessage = data.message || "Login failed. Please try again.";
+        let errorType = ErrorType.SERVER;
+        let errorDetails = null;
+
+        // Check for specific error messages and status codes
+        if (response.status === 401) {
+          errorMessage = "Incorrect password. Please try again.";
+          errorType = ErrorType.AUTHENTICATION;
+        } else if (response.status === 404) {
+          errorMessage = "User not found. Please check your email or sign up.";
+          errorType = ErrorType.AUTHENTICATION;
+        } else if (
+          errorMessage.toLowerCase().includes("invalid") ||
+          errorMessage.toLowerCase().includes("credentials")
+        ) {
+          errorMessage = "Incorrect email or password. Please try again.";
+          errorType = ErrorType.AUTHENTICATION;
+        } else if (errorMessage.toLowerCase().includes("password")) {
+          errorMessage = "Incorrect password. Please try again.";
+          errorType = ErrorType.AUTHENTICATION;
+        } else if (errorMessage.toLowerCase().includes("not found")) {
+          errorMessage = "User not found. Please check your email or sign up.";
+          errorType = ErrorType.AUTHENTICATION;
+        } else if (response.status === 429) {
+          errorMessage = "Too many login attempts. Please try again later.";
+          errorType = ErrorType.SERVER;
+        }
+
+        setError({
+          message: errorMessage,
+          type: errorType,
+          details: errorDetails
+        });
       }
     } catch (err) {
-      setError("An error occurred. Please try again.");
+      // Handle network errors
+      if (!navigator.onLine) {
+        setError({
+          message: "No internet connection. Please check your network and try again.",
+          type: ErrorType.NETWORK
+        });
+      } else {
+        setError({
+          message: "An error occurred while connecting to the server. Please try again.",
+          type: ErrorType.UNKNOWN
+        });
+      }
+      console.error("Login error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -74,12 +121,75 @@ export default function LoginPage() {
       </div>
       <h1 className="text-2xl font-bold text-center mb-6">Login to ABSENS</h1>
       {error && (
-        <div
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
-          role="alert"
-        >
-          <span className="block sm:inline">{error}</span>
-        </div>
+        <ErrorDisplay
+          error={error}
+          className="mb-4"
+          onDismiss={() => setError(null)}
+          showRetry={error.type === ErrorType.NETWORK}
+          onRetry={() => {
+            setIsLoading(true);
+            setError(null);
+            // Retry the login without the event object
+            fetch(`${API_URL}/user/login`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, password }),
+              credentials: "include",
+            })
+            .then(response => {
+              return response.json().then(data => ({ data, response }));
+            })
+            .then(({ data, response }) => {
+              setIsLoading(false);
+              if (data.success) {
+                localStorage.setItem("user", JSON.stringify(data.data.user));
+                localStorage.setItem("accessToken", data.data.accessToken);
+                localStorage.setItem("refreshToken", data.data.refreshToken);
+                dispatch(setUser(data.data.user));
+                router.push("/dashboard");
+              } else {
+                // Handle API errors with standardized format
+                let errorMessage = data.message || "Login failed. Please try again.";
+                let errorType = ErrorType.SERVER;
+                let errorDetails = null;
+
+                // Check for specific error messages and status codes
+                if (response.status === 401) {
+                  errorMessage = "Incorrect password. Please try again.";
+                  errorType = ErrorType.AUTHENTICATION;
+                } else if (response.status === 404) {
+                  errorMessage = "User not found. Please check your email or sign up.";
+                  errorType = ErrorType.AUTHENTICATION;
+                } else if (
+                  errorMessage.toLowerCase().includes("invalid") ||
+                  errorMessage.toLowerCase().includes("credentials")
+                ) {
+                  errorMessage = "Incorrect email or password. Please try again.";
+                  errorType = ErrorType.AUTHENTICATION;
+                } else if (errorMessage.toLowerCase().includes("password")) {
+                  errorMessage = "Incorrect password. Please try again.";
+                  errorType = ErrorType.AUTHENTICATION;
+                } else if (errorMessage.toLowerCase().includes("not found")) {
+                  errorMessage = "User not found. Please check your email or sign up.";
+                  errorType = ErrorType.AUTHENTICATION;
+                }
+
+                setError({
+                  message: errorMessage,
+                  type: errorType,
+                  details: errorDetails
+                });
+              }
+            })
+            .catch(() => {
+              setIsLoading(false);
+              setError({
+                message: "An error occurred while connecting to the server. Please try again.",
+                type: ErrorType.UNKNOWN
+              });
+            });
+          }}
+        />
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">

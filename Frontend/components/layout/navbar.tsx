@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useDispatch, useSelector } from "react-redux";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Menu, AlertTriangle } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 import { Loader } from "@/components/ui/loader";
@@ -135,8 +136,9 @@ export default function Navbar() {
           </nav>
         </div>
 
-        {/* Right Side: Register or Logout button, plus ModeToggle */}
+        {/* Right Side: Notification Bell, Register or Logout button, plus ModeToggle */}
         <div className="flex items-center ml-auto space-x-2">
+          {isLoggedIn && <NotificationBell />}
           {isLoggedIn ? (
             <Button
               variant="destructive"

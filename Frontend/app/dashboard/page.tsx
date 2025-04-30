@@ -8,20 +8,19 @@ import {
   Search,
   AlertTriangle,
   CheckCircle,
-  MapPin,
-  Calendar,
   X,
   Camera,
   ArrowRight,
   Clock,
   Activity,
-  BarChart3,
   PieChart,
-  User,
   Bell,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { ErrorDisplay } from "@/components/ui/error-display";
+import { ErrorType } from "@/utils/errorHandler";
+import { toast } from "sonner";
 
 // Define interfaces for reported and missing cases based on your data structure
 interface ReportedCase {
@@ -124,6 +123,8 @@ const DashboardPage: React.FC = () => {
   // Local state for active tab and profile editing
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<{ message: string; type?: ErrorType } | null>(null);
   const [editedProfile, setEditedProfile] = useState<UserProfile>({
     fullname: currentUser.fullname,
     email: currentUser.email,
@@ -177,11 +178,89 @@ const DashboardPage: React.FC = () => {
   }, [currentUser]);
 
   // Handler for updating the profile
-  const handleProfileUpdate = (e: FormEvent<HTMLFormElement>) => {
+  const handleProfileUpdate = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Typically, make an API call here to update the user profile
-    // console.log("Updated profile:", editedProfile);
-    setIsEditingProfile(false);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Validate inputs
+      if (!editedProfile.fullname.trim()) {
+        setError({
+          message: "Full name is required",
+          type: ErrorType.VALIDATION
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!editedProfile.email.trim() || !editedProfile.email.includes('@')) {
+        setError({
+          message: "Valid email is required",
+          type: ErrorType.VALIDATION
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Make API call to update profile
+      const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const response = await fetch(`${API_URL}/user/update-profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("accessToken")}`
+        },
+        body: JSON.stringify({
+          fullname: editedProfile.fullname,
+          email: editedProfile.email,
+          gender: editedProfile.gender
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Show success toast
+        toast.success("Profile Updated", {
+          description: "Your profile has been updated successfully."
+        });
+
+        // Update local storage with new user data
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const updatedUser = {
+          ...user,
+          fullname: editedProfile.fullname,
+          email: editedProfile.email,
+          gender: editedProfile.gender
+        };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+
+        setIsEditingProfile(false);
+      } else {
+        // Handle error response
+        setError({
+          message: data.message || "Failed to update profile",
+          type: ErrorType.SERVER
+        });
+      }
+    } catch (err) {
+      // Handle network errors
+      if (!navigator.onLine) {
+        setError({
+          message: "No internet connection. Please check your network and try again.",
+          type: ErrorType.NETWORK
+        });
+      } else {
+        setError({
+          message: "An error occurred while updating your profile. Please try again.",
+          type: ErrorType.UNKNOWN
+        });
+      }
+      console.error("Profile update error:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Handler for input changes in the profile form
@@ -249,6 +328,15 @@ const DashboardPage: React.FC = () => {
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
                 <form onSubmit={handleProfileUpdate} className="mt-4">
+                  {error && (
+                    <ErrorDisplay
+                      error={error}
+                      className="mb-4"
+                      onDismiss={() => setError(null)}
+                      showRetry={error.type === ErrorType.NETWORK}
+                      onRetry={() => handleProfileUpdate}
+                    />
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col items-center md:items-start">
                       <div className="relative">
@@ -350,9 +438,22 @@ const DashboardPage: React.FC = () => {
                         </button>
                         <button
                           type="submit"
-                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                          disabled={isLoading}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
                         >
-                          Save Changes
+                          {isLoading ? (
+                            <>
+                              <span className="animate-spin mr-2">
+                                <svg className="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                              </span>
+                              Saving...
+                            </>
+                          ) : (
+                            "Save Changes"
+                          )}
                         </button>
                       </div>
                     </div>

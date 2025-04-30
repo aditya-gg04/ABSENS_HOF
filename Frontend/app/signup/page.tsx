@@ -10,15 +10,19 @@ import { Label } from "@/components/ui/label";
 import { Loader } from "@/components/ui/loader";
 import { AlertTriangle } from "lucide-react";
 import { setUser } from "@/lib/slices/authSlice";
+import { ErrorDisplay } from "@/components/ui/error-display";
+import { ErrorType } from "@/utils/errorHandler";
+import { toast } from "sonner";
+import { PasswordStrength } from "@/components/ui/password-strength";
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [otpVerified, setOtpVerified] = useState(false);
-  const [otpError, setOtpError] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ message: string; type?: ErrorType } | null>(null);
+  const [otpError, setOtpError] = useState<{ message: string; type?: ErrorType } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch(); // Add this
@@ -27,12 +31,32 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
+    setError(null);
+    setOtpError(null);
+
+    // Validate password
+    if (password.length < 6) {
+      setError({
+        message: "Password must be at least 6 characters long",
+        type: ErrorType.VALIDATION
+      });
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      // console.log("Registering user...");
-      // console.log("Full Name:", fullName);
-      // console.log("Email:", email);
+      // Verify OTP first
+      const otpVerified = await checkOtp();
+      if (!otpVerified) {
+        setOtpError({
+          message: "Please verify your OTP before registering",
+          type: ErrorType.VALIDATION
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Register the user
       const response = await fetch(`${API_URL}/user/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -40,36 +64,76 @@ export default function SignupPage() {
         credentials: "include",
       });
 
-      // console.log(response);
+      const data = await response.json();
+      console.log("Registration response:", data); // For debugging
 
-      const flag =await checkOtp();
-      // console.log("Otp Verified status: ", flag);
-      if (!flag) {
-        setOtpError("Please verify your OTP");
-        return;
-      }
+      if (data.success) {
+        // Show success toast
+        toast.success("Registration successful!", {
+          description: "Welcome to ABSENS. You are now logged in."
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        dispatch(setUser(data.data.user)); // ✅ Correct Redux dispatch
+        // Save user data and tokens
+        dispatch(setUser(data.data.user));
         localStorage.setItem("accessToken", data.data.accessToken);
         localStorage.setItem("refreshToken", data.data.refreshToken);
+        localStorage.setItem("user", JSON.stringify(data.data.user));
 
+        // Redirect to dashboard
         router.push("/dashboard");
       } else {
-        const data = await response.json();
-        setError(data.message || "Signup failed");
+        // Handle standardized error format
+        let errorMessage = data.message || "Registration failed. Please try again.";
+        let errorType = ErrorType.SERVER;
+
+        // Check for specific error conditions
+        if (response.status === 409 ||
+            errorMessage.toLowerCase().includes("already exists") ||
+            errorMessage.toLowerCase().includes("already registered")) {
+          errorMessage = "This email is already registered. Please use a different email or login.";
+          errorType = ErrorType.VALIDATION;
+        } else if (response.status === 400) {
+          errorType = ErrorType.VALIDATION;
+        }
+
+        setError({
+          message: errorMessage,
+          type: errorType
+        });
       }
     } catch (err) {
-      setError("An error occurred. Please try again.");
+      // Handle network errors
+      if (!navigator.onLine) {
+        setError({
+          message: "No internet connection. Please check your network and try again.",
+          type: ErrorType.NETWORK
+        });
+      } else {
+        setError({
+          message: "An error occurred while connecting to the server. Please try again.",
+          type: ErrorType.UNKNOWN
+        });
+      }
+      console.error("Registration error:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
   const getOTP = async () => {
+    // Validate email first
+    if (!email || !email.includes('@')) {
+      setError({
+        message: "Please enter a valid email address",
+        type: ErrorType.VALIDATION
+      });
+      return;
+    }
+
     setIsLoading(true);
-    setError("");
+    setError(null);
+    setOtpError(null);
+
     try {
       const response = await fetch(`${API_URL}/user/get-otp`, {
         method: "POST",
@@ -77,16 +141,45 @@ export default function SignupPage() {
         body: JSON.stringify({ email }),
         credentials: "include",
       });
-      if (response.ok) {
-        setOtpError("");
-        alert("OTP sent to your email");
-        // Handle OTP retrieval success
+
+      const data = await response.json();
+      console.log("Get OTP response:", data); // For debugging
+
+      if (data.success) {
+        // Show success toast
+        toast.success("OTP Sent", {
+          description: `A verification code has been sent to ${email}. Please check your inbox.`
+        });
       } else {
-        const data = await response.json();
-        setError(data.message || "Failed to get OTP");
+        // Handle standardized error format
+        let errorMessage = data.message || "Failed to send OTP. Please try again.";
+        let errorType = ErrorType.SERVER;
+
+        if (response.status === 429) {
+          errorMessage = "Too many requests. Please try again later.";
+        } else if (response.status === 400) {
+          errorType = ErrorType.VALIDATION;
+        }
+
+        setError({
+          message: errorMessage,
+          type: errorType
+        });
       }
     } catch (err) {
-      setError("An error occurred. Please try again.");
+      // Handle network errors
+      if (!navigator.onLine) {
+        setError({
+          message: "No internet connection. Please check your network and try again.",
+          type: ErrorType.NETWORK
+        });
+      } else {
+        setError({
+          message: "An error occurred while connecting to the server. Please try again.",
+          type: ErrorType.UNKNOWN
+        });
+      }
+      console.error("OTP request error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -94,8 +187,18 @@ export default function SignupPage() {
 
   // Function to check OTP
   const checkOtp = async () => {
+    // Validate OTP
+    if (!otp || otp.trim() === '') {
+      setOtpError({
+        message: "Please enter the OTP sent to your email",
+        type: ErrorType.VALIDATION
+      });
+      return false;
+    }
+
     setIsLoading(true);
-    setError("");
+    setError(null);
+
     try {
       const response = await fetch(`${API_URL}/user/verify-otp`, {
         method: "POST",
@@ -103,18 +206,52 @@ export default function SignupPage() {
         body: JSON.stringify({ email, otp }),
         credentials: "include",
       });
-      // console.log("Verify otp response", response);
-      // console.log(response.ok);
-      if (response.ok === true) {
-        // console.log("OTP verified successfully");
+
+      const data = await response.json();
+      console.log("OTP verification response:", data); // For debugging
+
+      if (data.success) {
         setOtpVerified(true);
-        setOtpError("");
+        setOtpError(null);
+        // Show success toast
+        toast.success("OTP Verified", {
+          description: "Your email has been verified successfully."
+        });
         return true;
       } else {
-        setError("Failed to verify OTP");
+        // Handle standardized error format
+        let errorMessage = data.message || "Failed to verify OTP. Please try again.";
+
+        // Check for specific error conditions
+        if (response.status === 400 ||
+            errorMessage.toLowerCase().includes("invalid") ||
+            errorMessage.toLowerCase().includes("otp")) {
+          errorMessage = "Invalid OTP. Please check and try again.";
+        } else if (response.status === 404 || errorMessage.toLowerCase().includes("expired")) {
+          errorMessage = "OTP not found or expired. Please request a new OTP.";
+        }
+
+        setOtpError({
+          message: errorMessage,
+          type: ErrorType.VALIDATION
+        });
+        return false;
       }
     } catch (err) {
-      setError("An error occurred. Please try again.");
+      // Handle network errors
+      if (!navigator.onLine) {
+        setOtpError({
+          message: "No internet connection. Please check your network and try again.",
+          type: ErrorType.NETWORK
+        });
+      } else {
+        setOtpError({
+          message: "An error occurred while verifying OTP. Please try again.",
+          type: ErrorType.UNKNOWN
+        });
+      }
+      console.error("OTP verification error:", err);
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -129,20 +266,64 @@ export default function SignupPage() {
         Sign up for ABSENS
       </h1>
       {error && (
-        <div
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
-          role="alert"
-        >
-          <span className="block sm:inline">{error}</span>
-        </div>
+        <ErrorDisplay
+          error={error}
+          className="mb-4"
+          onDismiss={() => setError(null)}
+          showRetry={error.type === ErrorType.NETWORK}
+          onRetry={() => {
+            setIsLoading(true);
+            setError(null);
+            // Retry the network request
+            checkOtp().then(verified => {
+              if (verified) {
+                fetch(`${API_URL}/user/register`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ fullname: fullName, email, password }),
+                  credentials: "include",
+                })
+                .then(response => response.json())
+                .then(data => {
+                  setIsLoading(false);
+                  if (data.success) {
+                    toast.success("Registration successful!", {
+                      description: "Welcome to ABSENS. You are now logged in."
+                    });
+                    dispatch(setUser(data.data.user));
+                    localStorage.setItem("accessToken", data.data.accessToken);
+                    localStorage.setItem("refreshToken", data.data.refreshToken);
+                    localStorage.setItem("user", JSON.stringify(data.data.user));
+                    router.push("/dashboard");
+                  } else {
+                    setError({
+                      message: data.message || "Registration failed. Please try again.",
+                      type: ErrorType.SERVER
+                    });
+                  }
+                })
+                .catch(() => {
+                  setIsLoading(false);
+                  setError({
+                    message: "An error occurred while connecting to the server. Please try again.",
+                    type: ErrorType.UNKNOWN
+                  });
+                });
+              } else {
+                setIsLoading(false);
+              }
+            });
+          }}
+        />
       )}
       {otpError && (
-        <div
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
-          role="alert"
-        >
-          <span className="block sm:inline">{otpError}</span>
-        </div>
+        <ErrorDisplay
+          error={otpError}
+          className="mb-4"
+          onDismiss={() => setOtpError(null)}
+          showRetry={otpError.type === ErrorType.NETWORK}
+          onRetry={() => checkOtp()}
+        />
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
@@ -195,6 +376,10 @@ export default function SignupPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <PasswordStrength password={password} />
+          <p className="text-xs text-gray-500 mt-1">
+            Password must be at least 6 characters long
+          </p>
         </div>
         <Button
           type="submit"

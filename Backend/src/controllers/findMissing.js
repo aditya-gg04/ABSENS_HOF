@@ -3,6 +3,7 @@ import { uploadToCloudinary } from '../config/cloudinary.js';
 import ApiResponse from '../utils/apiResponse.js';
 import mongoose from 'mongoose';
 import User from '../models/user.model.js';
+import { createNotification, createGlobalNotification } from './notification.controller.js';
 
 export const createMissingPerson = async (req, res) => {
     try {
@@ -44,10 +45,31 @@ export const createMissingPerson = async (req, res) => {
             photos: cloudinaryResults, // Use URLs returned from Cloudinary
             reportedBy: req.user.id,
         });
-        
+
         const user = await User.findById(req.user.id);
         user.missingCases.push(missingPerson._id);
         await user.save();
+
+        // Create a notification for the user
+        await createNotification(
+            req.user.id,
+            'MISSING_PERSON',
+            'Missing Person Report Created',
+            `Your report for ${name} has been submitted successfully.`,
+            missingPerson._id,
+            'MissingPerson',
+            missingPerson.photos[0]
+        );
+
+        // Create a global notification for all users
+        await createGlobalNotification(
+            'MISSING_PERSON',
+            'New Missing Person Report',
+            `${name}, age ${age}, was reported missing from ${lastSeenLocation}.`,
+            missingPerson._id,
+            'MissingPerson',
+            missingPerson.photos[0]
+        );
 
         return ApiResponse.success(res, {
             status: 201,
@@ -126,7 +148,7 @@ export const getMissingPersonByIds = async (req, res) => {
     try {
         // Expecting the frontend to send { ids: [id1, id2, id3, ...] }
         const { ids } = req.body;
-    
+
         // Validate that ids exist and is an array
         if (!ids || !Array.isArray(ids)) {
           return ApiResponse.error(res, {
@@ -134,7 +156,7 @@ export const getMissingPersonByIds = async (req, res) => {
             message: 'Invalid input: expected an array of IDs',
           });
         }
-    
+
         // Filter out invalid MongoDB ObjectIds
         const validIds = ids.filter(id => mongoose.Types.ObjectId.isValid(id));
         if (validIds.length === 0) {
@@ -143,12 +165,12 @@ export const getMissingPersonByIds = async (req, res) => {
             message: 'No valid IDs provided',
           });
         }
-    
+
         // Query the MissingPerson collection for documents with these IDs
         const missingPersons = await MissingPerson.find({
           _id: { $in: validIds },
         });
-    
+
         return ApiResponse.success(res, {
           statusCode: 200,
           message: 'Missing persons retrieved successfully',
@@ -171,10 +193,33 @@ export const updateMissingPersonStatus = async (req, res) => {
             req.params.id,
             { status },
             { new: true, runValidators: true },
-        );
+        ).populate('reportedBy', '_id');
 
         if (!person) {
             return ApiResponse.error(res, 404, 'Missing person not found');
+        }
+
+        // Create notification for the person who reported the missing person
+        if (status === 'found' && person.reportedBy) {
+            await createNotification(
+                person.reportedBy._id,
+                'STATUS_UPDATE',
+                'Missing Person Status Updated',
+                `${person.name} has been marked as found.`,
+                person._id,
+                'MissingPerson',
+                person.photos[0]
+            );
+
+            // Create a global notification
+            await createGlobalNotification(
+                'STATUS_UPDATE',
+                'Missing Person Found',
+                `${person.name}, previously reported missing, has been found.`,
+                person._id,
+                'MissingPerson',
+                person.photos[0]
+            );
         }
 
         return ApiResponse.success(res, {status:200,message: 'Status updated',data: person});

@@ -4,6 +4,7 @@ import { uploadToCloudinary } from '../config/cloudinary.js';
 import ApiResponse from '../utils/apiResponse.js';
 import mongoose from 'mongoose';
 import User from '../models/user.model.js';
+import { createNotification, createGlobalNotification } from './notification.controller.js';
 
 export const createSightingReport = async (req, res) => {
     try {
@@ -38,6 +39,27 @@ export const createSightingReport = async (req, res) => {
         const user = await User.findById(req.user.id);
         user.reportedCases.push(report._id);
         await user.save();
+
+        // Create a notification for the user
+        await createNotification(
+            req.user.id,
+            'SIGHTING_REPORT',
+            'Sighting Report Created',
+            `Your sighting report for ${name || 'Unknown person'} at ${location} has been submitted successfully.`,
+            report._id,
+            'SightingReport',
+            report.photos[0]
+        );
+
+        // Create a global notification
+        await createGlobalNotification(
+            'SIGHTING_REPORT',
+            'New Sighting Report',
+            `A new sighting has been reported at ${location}.`,
+            report._id,
+            'SightingReport',
+            report.photos[0]
+        );
 
         return ApiResponse.success(res, {
             status: 201,
@@ -153,10 +175,48 @@ export const updateSightingStatus = async (req, res) => {
                 $set: { verifiedBy: req.user.id },
             },
             { new: true, runValidators: true },
-        );
+        ).populate('reportedBy', '_id');
 
         if (!report) {
             return ApiResponse.error(res, 404, 'Report not found');
+        }
+
+        // Create notification for the person who reported the sighting
+        if (report.reportedBy) {
+            let notificationTitle = '';
+            let notificationMessage = '';
+
+            if (status === 'verified') {
+                notificationTitle = 'Sighting Report Verified';
+                notificationMessage = `Your sighting report at ${report.location} has been verified.`;
+            } else if (status === 'rejected') {
+                notificationTitle = 'Sighting Report Rejected';
+                notificationMessage = `Your sighting report at ${report.location} has been rejected.`;
+            }
+
+            if (notificationTitle) {
+                await createNotification(
+                    report.reportedBy._id,
+                    'STATUS_UPDATE',
+                    notificationTitle,
+                    notificationMessage,
+                    report._id,
+                    'SightingReport',
+                    report.photos[0]
+                );
+            }
+        }
+
+        // If verified, create a global notification
+        if (status === 'verified') {
+            await createGlobalNotification(
+                'MATCH_FOUND',
+                'Sighting Report Verified',
+                `A sighting report at ${report.location} has been verified.`,
+                report._id,
+                'SightingReport',
+                report.photos[0]
+            );
         }
 
         return ApiResponse.success(res, 200, 'Status updated', report);
