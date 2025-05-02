@@ -11,6 +11,14 @@ export interface Notification {
   image?: string;
   isRead: boolean;
   isGlobal: boolean;
+  requiresConfirmation?: boolean;
+  confirmed?: boolean;
+  matchData?: {
+    missingPersonId?: string;
+    sightingReportId?: string;
+    matchId?: string;
+    sourceId?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

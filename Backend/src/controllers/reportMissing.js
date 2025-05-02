@@ -51,15 +51,7 @@ export const createSightingReport = async (req, res) => {
             report.photos[0]
         );
 
-        // Create a global notification
-        await createGlobalNotification(
-            'SIGHTING_REPORT',
-            'New Sighting Report',
-            `A new sighting has been reported at ${location}.`,
-            report._id,
-            'SightingReport',
-            report.photos[0]
-        );
+        // Global notifications are disabled for new listings
 
         return ApiResponse.success(res, {
             status: 201,
@@ -237,7 +229,7 @@ export const updateSightingStatus = async (req, res) => {
             }
         }
 
-        // If verified, create a global notification
+        // Global notifications are kept for verification status updates as they're important for all users
         if (status === 'verified') {
             await createGlobalNotification(
                 'MATCH_FOUND',

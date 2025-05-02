@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Bell, MapPin, Calendar, Loader2, AlertTriangle, Check, X } from "lucide-react";
+import { Bell, Loader2, AlertTriangle, Check, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,11 +10,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { RootState } from "@/lib/store";
-import { fetchNotifications, markNotificationsAsRead } from "@/services/notification.service";
+import { fetchNotifications, markNotificationsAsRead, confirmMatch } from "@/services/notification.service";
 import { setNotifications, markNotificationsAsRead as markAsRead } from "@/lib/slices/dataSlice";
 import { formatDistanceToNow } from "date-fns";
 import Image from "next/image";
@@ -23,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Notification } from "@/lib/slices/dataSlice";
 import { PageLoader } from "@/components/ui/page-loader";
+import { toast } from "sonner";
 
 export default function AlertsPage() {
   const dispatch = useDispatch();
@@ -34,6 +34,7 @@ export default function AlertsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [activeTab, setActiveTab] = useState("all");
+  const [processingNotifications, setProcessingNotifications] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -68,6 +69,11 @@ export default function AlertsPage() {
   };
 
   const handleNotificationClick = (notification: Notification) => {
+    // Don't navigate if this is a match notification that requires confirmation
+    if (notification.type === 'MATCH_FOUND' && notification.requiresConfirmation && !notification.confirmed) {
+      return;
+    }
+
     // Mark as read if not already read
     if (!notification.isRead) {
       handleMarkAsRead([notification._id]);
@@ -78,6 +84,33 @@ export default function AlertsPage() {
       router.push(`/missing/${notification.relatedId}`);
     } else if (notification.relatedModel === "SightingReport") {
       router.push(`/report/${notification.relatedId}`);
+    }
+  };
+
+  const handleConfirmMatch = async (notificationId: string, confirm: boolean, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click event
+
+    try {
+      setProcessingNotifications(prev => [...prev, notificationId]);
+
+      await confirmMatch(notificationId, confirm);
+
+      // Refresh notifications after confirmation
+      const { notifications: notifs } = await fetchNotifications(currentPage, 10);
+      dispatch(setNotifications(notifs));
+
+      toast(confirm ? "Match confirmed" : "Match rejected", {
+        description: confirm
+          ? "The case has been marked as resolved and the relevant parties have been notified."
+          : "The match has been rejected."
+      });
+    } catch (error: any) {
+      console.error("Error confirming match:", error);
+      toast.error("Error", {
+        description: error.message || "There was a problem processing your request. Please try again."
+      });
+    } finally {
+      setProcessingNotifications(prev => prev.filter(id => id !== notificationId));
     }
   };
 
@@ -236,6 +269,46 @@ export default function AlertsPage() {
                           <p className="text-xs sm:text-sm break-words overflow-wrap-anywhere">{notification.message}</p>
                           {!notification.isRead && (
                             <Badge variant="default" className="text-xs">New</Badge>
+                          )}
+
+                          {/* Confirm/Not Confirm buttons for match notifications */}
+                          {notification.type === 'MATCH_FOUND' &&
+                           notification.requiresConfirmation &&
+                           !notification.confirmed && (
+                            <div className="flex gap-2 mt-3">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="flex items-center gap-1"
+                                onClick={(e) => handleConfirmMatch(notification._id, true, e)}
+                                disabled={processingNotifications.includes(notification._id)}
+                              >
+                                <ThumbsUp className="h-3 w-3" />
+                                <span>Confirm Match</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex items-center gap-1"
+                                onClick={(e) => handleConfirmMatch(notification._id, false, e)}
+                                disabled={processingNotifications.includes(notification._id)}
+                              >
+                                <ThumbsDown className="h-3 w-3" />
+                                <span>Not a Match</span>
+                              </Button>
+                              {processingNotifications.includes(notification._id) && (
+                                <Loader2 className="h-4 w-4 animate-spin ml-2" />
+                              )}
+                            </div>
+                          )}
+
+                          {/* Show confirmation status if already processed */}
+                          {notification.type === 'MATCH_FOUND' &&
+                           notification.requiresConfirmation &&
+                           notification.confirmed !== undefined && (
+                            <Badge variant={notification.confirmed ? "default" : "destructive"} className="mt-2">
+                              {notification.confirmed ? "Match Confirmed" : "Match Rejected"}
+                            </Badge>
                           )}
                         </div>
                       </div>

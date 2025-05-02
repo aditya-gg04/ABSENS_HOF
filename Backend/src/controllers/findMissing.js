@@ -61,15 +61,7 @@ export const createMissingPerson = async (req, res) => {
             missingPerson.photos[0]
         );
 
-        // Create a global notification for all users
-        await createGlobalNotification(
-            'MISSING_PERSON',
-            'New Missing Person Report',
-            `${name}, age ${age}, was reported missing from ${lastSeenLocation}.`,
-            missingPerson._id,
-            'MissingPerson',
-            missingPerson.photos[0]
-        );
+        // Global notifications are disabled for new listings
 
         return ApiResponse.success(res, {
             status: 201,
@@ -125,11 +117,25 @@ export const getMissingPersonsByUserId = async (req, res) => {
 
 export const getMissingPersonById = async (req, res) => {
     try {
-        const person = await MissingPerson.findById(req.params.id)
+        const id = req.params.id;
+
+        // Validate that the ID is a valid MongoDB ObjectId
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            console.error('Invalid ID format:', id);
+            return ApiResponse.error(res, {
+                statusCode: 400,
+                message: 'Invalid ID format'
+            });
+        }
+
+        const person = await MissingPerson.findById(id)
             .populate('reportedBy', 'username fullname');
 
         if (!person) {
-            return ApiResponse.error(res, {statusCode: 404,message: 'Missing person not found'});
+            return ApiResponse.error(res, {
+                statusCode: 404,
+                message: 'Missing person not found'
+            });
         }
 
         return ApiResponse.success(res, {
@@ -139,7 +145,11 @@ export const getMissingPersonById = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching missing person:', error);
-        return ApiResponse.error(res, {statusCode:500,message: 'Server Error'});
+        return ApiResponse.error(res, {
+            statusCode: 500,
+            message: 'Server Error',
+            error: error.message
+        });
     }
 }
 
@@ -190,14 +200,28 @@ export const getMissingPersonByIds = async (req, res) => {
 export const updateMissingPersonStatus = async (req, res) => {
     try {
         const { status } = req.body;
+        const id = req.params.id;
+
+        // Validate that the ID is a valid MongoDB ObjectId
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            console.error('Invalid ID format:', id);
+            return ApiResponse.error(res, {
+                statusCode: 400,
+                message: 'Invalid ID format'
+            });
+        }
+
         const person = await MissingPerson.findByIdAndUpdate(
-            req.params.id,
+            id,
             { status },
             { new: true, runValidators: true },
         ).populate('reportedBy', '_id');
 
         if (!person) {
-            return ApiResponse.error(res, 404, 'Missing person not found');
+            return ApiResponse.error(res, {
+                statusCode: 404,
+                message: 'Missing person not found'
+            });
         }
 
         // Create notification for the person who reported the missing person
@@ -212,7 +236,7 @@ export const updateMissingPersonStatus = async (req, res) => {
                 person.photos[0]
             );
 
-            // Create a global notification
+            // Global notifications are kept for status updates as they're important for all users
             await createGlobalNotification(
                 'STATUS_UPDATE',
                 'Missing Person Found',
@@ -223,9 +247,17 @@ export const updateMissingPersonStatus = async (req, res) => {
             );
         }
 
-        return ApiResponse.success(res, {status:200,message: 'Status updated',data: person});
+        return ApiResponse.success(res, {
+            status: 200,
+            message: 'Status updated',
+            data: person
+        });
     } catch (error) {
         console.error('Status update error:', error);
-        return ApiResponse.error(res, 500, 'Server Error');
+        return ApiResponse.error(res, {
+            statusCode: 500,
+            message: 'Server Error',
+            error: error.message
+        });
     }
 };

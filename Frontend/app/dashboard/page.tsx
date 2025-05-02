@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { setUser } from "@/lib/slices/authSlice";
 import { PageLoader } from "@/components/ui/page-loader";
+import { refreshUserData } from "@/services/user.service";
 
 // Define interfaces for reported and missing cases based on your data structure
 interface ReportedCase {
@@ -181,15 +182,22 @@ const DashboardPage: React.FC = () => {
     });
   }, [currentUser]);
 
-  // Simulate loading state for demonstration
+  // Fetch latest user data when dashboard loads
   useEffect(() => {
-    // Simulate API call or data loading
-    const timer = setTimeout(() => {
-      setIsPageLoading(false);
-    }, 1000);
+    const fetchLatestUserData = async () => {
+      try {
+        setIsPageLoading(true);
+        // Refresh user data from the backend
+        await refreshUserData(dispatch);
+      } catch (error) {
+        console.error("Error refreshing user data:", error);
+      } finally {
+        setIsPageLoading(false);
+      }
+    };
 
-    return () => clearTimeout(timer);
-  }, []);
+    fetchLatestUserData();
+  }, [dispatch]);
 
   // Handler for updating the profile
   const handleProfileUpdate = async (e: FormEvent<HTMLFormElement>) => {

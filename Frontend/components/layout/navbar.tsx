@@ -41,8 +41,12 @@ export default function Navbar() {
     setLoading(false);
   }, [pathname]);
 
-  const handleLinkClick = () => {
-    setLoading(true);
+  const handleLinkClick = (targetPath: string) => {
+    // Don't set loading state if we're already on the target path
+    // or if we're already in a loading state (prevents double-clicks)
+    if (pathname !== targetPath && !loading) {
+      setLoading(true);
+    }
   };
 
   // Open the logout confirmation dialog
@@ -103,7 +107,7 @@ export default function Navbar() {
         <div className="flex md:hidden items-center">
           <Link
             href="/"
-            onClick={handleLinkClick}
+            onClick={() => handleLinkClick("/")}
             className="flex items-center space-x-2"
           >
             <AlertTriangle className="h-5 w-5 text-primary-foreground" />
@@ -127,7 +131,7 @@ export default function Navbar() {
               href="/"
               onClick={() => {
                 setOpen(false);
-                handleLinkClick();
+                handleLinkClick("/");
               }}
               className="flex items-center space-x-2 mb-8"
             >
@@ -141,7 +145,7 @@ export default function Navbar() {
                   href={route.href}
                   onClick={() => {
                     setOpen(false);
-                    handleLinkClick();
+                    handleLinkClick(route.href);
                   }}
                   className={`text-lg font-medium transition-colors hover:text-foreground ${
                     pathname === route.href ? "text-foreground" : "text-muted-foreground"
@@ -184,7 +188,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center flex-1">
           <Link
             href="/"
-            onClick={handleLinkClick}
+            onClick={() => handleLinkClick("/")}
             className="mr-6 flex items-center space-x-2"
           >
             <AlertTriangle className="h-6 w-6 text-primary-foreground" />
@@ -195,7 +199,7 @@ export default function Navbar() {
               <Link
                 key={route.href}
                 href={route.href}
-                onClick={handleLinkClick}
+                onClick={() => handleLinkClick(route.href)}
                 className={`transition-colors hover:text-primary-foreground ${
                   pathname === route.href ? "text-primary-foreground" : "text-primary-foreground/80"
                 }`}
@@ -274,7 +278,7 @@ export default function Navbar() {
               className="text-xs sm:text-sm"
               asChild
             >
-              <Link href="/signup" onClick={handleLinkClick}>
+              <Link href="/signup" onClick={() => handleLinkClick("/signup")}>
                 Register
               </Link>
             </Button>

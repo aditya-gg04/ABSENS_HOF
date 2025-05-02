@@ -104,3 +104,30 @@ export const deleteNotification = async (notificationId: string): Promise<void> 
     throw error;
   }
 };
+
+export const confirmMatch = async (notificationId: string, confirm: boolean): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_URL}/notifications/confirm-match`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+      },
+      body: JSON.stringify({
+        notificationId,
+        confirm
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to confirm match");
+    }
+
+    const data = await response.json();
+    return data.data.confirmed;
+  } catch (error) {
+    console.error("Error confirming match:", error);
+    return false;
+  }
+};

@@ -531,6 +531,44 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     }
 });
 
+// Get user profile with populated data
+const getUserProfile = asyncHandler(async (req, res) => {
+    try {
+        if (!req.user) {
+            throw new ApiError(401, 'Unauthorized access');
+        }
+
+        // Fetch user with populated reportedCases and missingCases
+        const user = await User.findById(req.user._id)
+            .select('-password -refreshToken')
+            .populate('reportedCases missingCases');
+
+        if (!user) {
+            throw new ApiError(404, 'User not found');
+        }
+
+        return ApiResponse.success(res, {
+            statusCode: 200,
+            message: 'User profile fetched successfully',
+            data: user
+        });
+    } catch (error) {
+        if (error instanceof ApiError) {
+            return ApiResponse.error(res, {
+                statusCode: error.statusCode,
+                message: error.message,
+                error: error.message
+            });
+        }
+
+        return ApiResponse.error(res, {
+            statusCode: 500,
+            message: 'Error fetching user profile',
+            error: error.message
+        });
+    }
+});
+
 export {
     getUsers,
     registerUser,
@@ -541,4 +579,5 @@ export {
     verifyOtp,
     updateUserProfile,
     updateUserAvatar,
+    getUserProfile,
 };

@@ -5,7 +5,9 @@ const notificationSchema = new mongoose.Schema(
         recipient: {
             type: mongoose.Schema.ObjectId,
             ref: 'User',
-            required: true,
+            required: function() {
+                return !this.isGlobal; // Only required if not a global notification
+            },
         },
         type: {
             type: String,
@@ -38,6 +40,18 @@ const notificationSchema = new mongoose.Schema(
         isGlobal: {
             type: Boolean,
             default: false,
+        },
+        requiresConfirmation: {
+            type: Boolean,
+            default: false,
+        },
+        confirmed: {
+            type: Boolean,
+            default: false,
+        },
+        matchData: {
+            type: mongoose.Schema.Types.Mixed,
+            default: null,
         },
     },
     { timestamps: true }

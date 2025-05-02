@@ -8,9 +8,11 @@ import { Upload, SearchIcon, X } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Loader } from "@/components/ui/loader"
-import { useSelector } from "react-redux"
+import { useSelector, useDispatch } from "react-redux"
 import { AuthRequiredPrompt } from "@/components/ui/auth-required-prompt"
 import { PageLoader } from "@/components/ui/page-loader"
+import { refreshUserData } from "@/services/user.service"
+import { toast } from "sonner"
 
 // Define types
 interface SearchResult {
@@ -39,7 +41,6 @@ interface SearchParams {
 }
 
 export default function ReportPage() {
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchParams, setSearchParams] = useState<SearchParams>({
     name: "",
     description: "",
@@ -51,8 +52,10 @@ export default function ReportPage() {
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isProcessingFastAPI, setIsProcessingFastAPI] = useState(false)
+  const [isRefreshingUserData, setIsRefreshingUserData] = useState(false)
   const [isPageLoading, setIsPageLoading] = useState(true)
   const router = useRouter()
+  const dispatch = useDispatch()
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL
 
   // Get authentication state from Redux
@@ -144,7 +147,9 @@ export default function ReportPage() {
 
     // Check if user is logged in
     if (!isLoggedIn || !accessToken) {
-      alert("You must be logged in to submit a report.")
+      toast.error("Authentication Required", {
+        description: "You must be logged in to submit a report."
+      })
       return
     }
 
@@ -183,14 +188,32 @@ export default function ReportPage() {
       await callFastAPIBackend(person)
       setIsProcessingFastAPI(false)
 
-      // Only route to next page when both API calls are done
-      router.push("/my-reports")
+      // Show success message
+      toast.success("Report Submitted", {
+        description: "Your sighting report has been submitted successfully."
+      })
+
+      // Refresh user data in Redux store before redirecting
+      setIsRefreshingUserData(true)
+      const refreshSuccess = await refreshUserData(dispatch)
+      setIsRefreshingUserData(false)
+
+      if (refreshSuccess) {
+        // Redirect to dashboard with updated data
+        router.push("/dashboard")
+      } else {
+        // If refresh fails, still redirect but to the my-reports page
+        router.push("/my-reports")
+      }
     } catch (error) {
       console.error("Submission error:", error)
-      alert("Error: " + error)
+      toast.error("Error", {
+        description: "An unexpected error occurred. Please try again."
+      })
     } finally {
       setIsSubmitting(false)
       setIsProcessingFastAPI(false)
+      setIsRefreshingUserData(false)
     }
   }
 
@@ -336,7 +359,7 @@ export default function ReportPage() {
             size="lg"
             className="gap-2 w-full sm:w-auto sm:min-w-[200px] flex justify-center"
             onClick={handleSubmit}
-            disabled={isSubmitting || isProcessingFastAPI || !isLoggedIn}
+            disabled={isSubmitting || isProcessingFastAPI || isRefreshingUserData || !isLoggedIn}
           >
             {isSubmitting ? (
               <div className="flex items-center justify-center gap-2">
@@ -347,6 +370,26 @@ export default function ReportPage() {
                   </svg>
                 </div>
                 <span className="text-sm sm:text-base">Submitting report...</span>
+              </div>
+            ) : isProcessingFastAPI ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="animate-spin">
+                  <svg className="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <span className="text-sm sm:text-base">Processing...</span>
+              </div>
+            ) : isRefreshingUserData ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="animate-spin">
+                  <svg className="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <span className="text-sm sm:text-base">Updating...</span>
               </div>
             ) : !isLoggedIn ? (
               <span className="text-sm sm:text-base">Login to Submit</span>

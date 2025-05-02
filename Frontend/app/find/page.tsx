@@ -8,9 +8,11 @@ import { Upload, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Loader } from "@/components/ui/loader";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { AuthRequiredPrompt } from "@/components/ui/auth-required-prompt";
 import { PageLoader } from "@/components/ui/page-loader";
+import { refreshUserData } from "@/services/user.service";
+import { toast } from "sonner";
 
 type MissingPerson = {
   _id: string;
@@ -25,10 +27,12 @@ type MissingPerson = {
 
 export default function FindPage() {
   const router = useRouter();
+  const dispatch = useDispatch();
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingFastAPI, setIsProcessingFastAPI] = useState(false);
+  const [isRefreshingUserData, setIsRefreshingUserData] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
@@ -125,7 +129,9 @@ export default function FindPage() {
 
     // Check if user is logged in
     if (!isLoggedIn || !accessToken) {
-      alert("You must be logged in to submit a report.");
+      toast.error("Authentication Required", {
+        description: "You must be logged in to submit a report."
+      });
       return;
     }
 
@@ -153,7 +159,6 @@ export default function FindPage() {
         },
       });
 
-      // console.log("Raw Response:", response);
       const data = await response.json();
 
       if (response.ok) {
@@ -161,16 +166,38 @@ export default function FindPage() {
         setIsProcessingFastAPI(true);
         await callFastAPIBackend(data.data);
         setIsProcessingFastAPI(false);
-        router.push("/my-missing");
+
+        // Show success message
+        toast.success("Report Submitted", {
+          description: "Your missing person report has been submitted successfully."
+        });
+
+        // Refresh user data in Redux store before redirecting
+        setIsRefreshingUserData(true);
+        const refreshSuccess = await refreshUserData(dispatch);
+        setIsRefreshingUserData(false);
+
+        if (refreshSuccess) {
+          // Redirect to dashboard with updated data
+          router.push("/dashboard");
+        } else {
+          // If refresh fails, still redirect but to the my-missing page
+          router.push("/my-missing");
+        }
       } else {
-        alert(data || "Failed to submit report.");
+        toast.error("Submission Failed", {
+          description: data.message || "Failed to submit report. Please try again."
+        });
       }
     } catch (error) {
       console.error("Error submitting report:", error);
-      alert("An error occurred. Please try again.");
+      toast.error("Error", {
+        description: "An unexpected error occurred. Please try again."
+      });
     } finally {
       setIsSubmitting(false);
       setIsProcessingFastAPI(false);
+      setIsRefreshingUserData(false);
     }
   };
 
@@ -331,12 +358,22 @@ export default function FindPage() {
             type="submit"
             size="lg"
             className="w-full sm:w-auto sm:min-w-[200px] flex justify-center"
-            disabled={isSubmitting || isProcessingFastAPI || !isLoggedIn}
+            disabled={isSubmitting || isProcessingFastAPI || isRefreshingUserData || !isLoggedIn}
           >
             {isSubmitting ? (
               <div className="flex items-center justify-center gap-2">
                 <Loader size="sm" />
                 <span>Submitting...</span>
+              </div>
+            ) : isProcessingFastAPI ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader size="sm" />
+                <span>Processing...</span>
+              </div>
+            ) : isRefreshingUserData ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader size="sm" />
+                <span>Updating...</span>
               </div>
             ) : !isLoggedIn ? (
               "Login to Submit"
