@@ -5,8 +5,9 @@ import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
-import { MapPin, Eye, User, Image as ImageIcon, Search } from "lucide-react";
+import { MapPin, Eye, User, Image as ImageIcon, Search, Filter, ArrowLeft } from "lucide-react";
 import Image from "next/image";
+import { Input } from "@/components/ui/input";
 import { setSelectedMissingPerson } from "@/lib/slices/dataSlice"; // Redux action
 
 interface MissingPerson {
@@ -17,11 +18,14 @@ interface MissingPerson {
   missingDate: string;
   description: string;
   photos?: string[];
+  status: string;
 }
 
 export default function MyMissingPersonsPage() {
   const [missingPersons, setMissingPersons] = useState<MissingPerson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const router = useRouter();
   const user = useSelector((state: any) => state.auth.user);
   const dispatch = useDispatch();
@@ -63,6 +67,17 @@ export default function MyMissingPersonsPage() {
     router.push(`/missing/${person._id}`);
   };
 
+  // Filter missing persons based on search term and status
+  const filteredMissingPersons = missingPersons.filter((person) => {
+    const matchesSearch = person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      person.lastSeenLocation.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = statusFilter === "all" ||
+      person.status.toLowerCase() === statusFilter.toLowerCase();
+
+    return matchesSearch && matchesStatus;
+  });
+
   if (isLoading) {
     return (
       <div className="container mx-auto py-10 flex justify-center items-center min-h-[50vh]">
@@ -78,6 +93,18 @@ export default function MyMissingPersonsPage() {
 
   return (
     <div className="container mx-auto py-6 sm:py-8 md:py-10 px-4 sm:px-6 md:px-8 lg:px-12 max-w-7xl">
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.back()}
+          className="flex items-center gap-1"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back</span>
+        </Button>
+      </div>
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold">My Missing Persons Reports</h1>
         <Button
@@ -89,6 +116,31 @@ export default function MyMissingPersonsPage() {
         </Button>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full mb-6">
+        <div className="relative w-full sm:w-auto">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by name or location..."
+            className="pl-8 w-full sm:w-[250px]"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <select
+            className="bg-background border rounded-md px-3 py-2 text-sm"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All Status</option>
+            <option value="missing">Missing</option>
+            <option value="found">Found</option>
+          </select>
+        </div>
+      </div>
+
       {missingPersons.length === 0 ? (
         <div className="bg-gray-50 rounded-lg p-8 text-center">
           <Search className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -98,9 +150,23 @@ export default function MyMissingPersonsPage() {
             Report Missing Person
           </Button>
         </div>
+      ) : filteredMissingPersons.length === 0 ? (
+        <div className="bg-gray-50 rounded-lg p-8 text-center">
+          <Search className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2">No Matching Results</h3>
+          <p className="text-muted-foreground mb-6">
+            Try adjusting your search or filter criteria.
+          </p>
+          <Button variant="outline" onClick={() => {
+            setSearchTerm("");
+            setStatusFilter("all");
+          }}>
+            Clear Filters
+          </Button>
+        </div>
       ) : (
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {missingPersons.map((person) => (
+          {filteredMissingPersons.map((person) => (
             <div
               key={person._id}
               className="group relative rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"

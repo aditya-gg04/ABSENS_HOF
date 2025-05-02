@@ -160,9 +160,9 @@ export default function ReportDetailPage() {
         <div className="bg-white rounded-lg shadow p-6 text-center">
           <h2 className="text-xl font-semibold mb-4">No Report Data Found</h2>
           <p className="text-gray-500 mb-6">The requested report information could not be found.</p>
-          <Button onClick={() => router.push("/my-reports")} className="flex items-center gap-2">
+          <Button onClick={() => router.back()} className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Back to My Reported Cases
+            Back
           </Button>
         </div>
       </div>
@@ -171,10 +171,10 @@ export default function ReportDetailPage() {
 
   return (
     <div className="container mx-auto py-6 sm:py-8 md:py-10 px-4 sm:px-6 md:px-8 lg:px-12 max-w-7xl">
-      <Button onClick={() => router.push("/my-reports")} className="mb-4 sm:mb-6">
+      <Button onClick={() => router.back()} className="mb-4 sm:mb-6">
         <span className="flex items-center">
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to My Reported Cases
+          Back
         </span>
       </Button>
       <Card className="overflow-hidden">
