@@ -761,6 +761,32 @@ const DashboardPage: React.FC = () => {
                     </Link>
                   </div>
                 </div>
+
+                {/* View All Listings Section */}
+                <div>
+                  <h3 className="text-lg font-medium mb-4">My Listings</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Link href="/find-missing" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
+                      <div className="bg-indigo-100 p-3 rounded-full mr-3">
+                        <Search className="h-6 w-6 text-indigo-500" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium">My Missing Person Listings</h4>
+                        <p className="text-sm text-gray-500">View all your missing person listings</p>
+                      </div>
+                    </Link>
+
+                    <Link href="/report-missing" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
+                      <div className="bg-green-100 p-3 rounded-full mr-3">
+                        <AlertTriangle className="h-6 w-6 text-green-500" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium">My Reported Sightings</h4>
+                        <p className="text-sm text-gray-500">View all your reported sightings</p>
+                      </div>
+                    </Link>
+                  </div>
+                </div>
               </div>
             )}
 

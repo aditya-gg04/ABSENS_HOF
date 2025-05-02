@@ -98,6 +98,35 @@ export const searchMissingPersons = async (req, res) => {
     }
 };
 
+export const getAllMissingPersons = async (req, res) => {
+    try {
+        const { status } = req.query;
+        const query = {};
+
+        // Filter by status if provided
+        if (status) {
+            query.status = status;
+        }
+
+        const missingPersons = await MissingPerson.find(query)
+            .populate('reportedBy', 'username fullname')
+            .sort({ createdAt: -1 });
+
+        return ApiResponse.success(res, {
+            statusCode: 200,
+            message: 'All missing persons retrieved successfully',
+            data: missingPersons,
+        });
+    } catch (error) {
+        console.error('Error fetching all missing persons:', error);
+        return ApiResponse.error(res, {
+            statusCode: 500,
+            message: 'Server Error',
+            error: error.message
+        });
+    }
+};
+
 export const getMissingPersonsByUserId = async (req, res) => {
     try {
         const missingPersons = await MissingPerson.find({

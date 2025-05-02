@@ -6,6 +6,7 @@ import {
     getMissingPersonById,
     updateMissingPersonStatus,
     getMissingPersonsByUserId,
+    getAllMissingPersons,
 } from '../controllers/findMissing.js';
 import upload from '../middlewares/upload.js';
 
@@ -19,6 +20,9 @@ router.post(
     upload.array('photos', 5), // Handle multiple images (max 5)
     createMissingPerson,
 );
+
+// GET /api/v1/missing-persons (get all missing persons)
+router.get('/', getAllMissingPersons);
 
 // POST /api/v1/missing-persons/search (changed to POST for file upload)
 router.post('/search', upload.array('images', 5), searchMissingPersons);

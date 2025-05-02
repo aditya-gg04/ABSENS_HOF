@@ -13,14 +13,14 @@ const router = express.Router();
 
 // POST /api/v1/sightings
 router.post(
-  '/',  
+  '/',
   verifyToken,
   upload.array('photos', 5),
   createSightingReport
 );
 
 // GET /api/v1/sightings
-router.get('/', verifyToken, getSightingReports);
+router.get('/', getSightingReports);
 
 // GET /api/v1/sightings/user
 router.get('/user', verifyToken, getSightingReportsByUserId);
