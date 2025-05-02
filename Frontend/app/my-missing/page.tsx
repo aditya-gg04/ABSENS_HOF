@@ -172,6 +172,15 @@ export default function MyMissingPersonsPage() {
               className="group relative rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => handleViewDetails(person)}
             >
+              {/* Status Badge */}
+              <div className={`absolute top-2 right-2 z-10 px-2 py-1 rounded-full text-xs font-medium ${
+                person.status.toLowerCase() === "found"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-red-100 text-red-800"
+              }`}>
+                {person.status === "found" ? "Found" : "Missing"}
+              </div>
+
               {/* Image Container - Larger and more prominent */}
               <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-100">
                 {person.photos && person.photos.length > 0 ? (

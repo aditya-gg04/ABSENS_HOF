@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription, Dia
 import { sendMatchAlert } from "@/services/notification.service";
 import { useToast } from "@/hooks/use-toast";
 import { RootState } from "@/lib/store";
+import { Slider } from "@/components/ui/slider";
 
 interface User {
   _id: string;
@@ -35,9 +36,10 @@ export default function ReportDetailPage() {
   const [report, setReport] = useState<ReportedCase | null>(null);
   const [loading, setLoading] = useState(true);
   // Change matchingResults from an array to a single object
-  const [matchingResult, setMatchingResult] = useState<any | null>(null);
+  const [matchingResults, setMatchingResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [matchThreshold, setMatchThreshold] = useState<number>(70); // Default to 70%
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export default function ReportDetailPage() {
 
   const handleSearchMatches = async (person: ReportedCase): Promise<void> => {
     setIsSearching(true);
-    setMatchingResult(null); // Reset matching result
+    setMatchingResults([]); // Reset matching results
     try {
       const formData: FormData = new FormData();
       formData.append("user_id", person._id);
@@ -84,6 +86,9 @@ export default function ReportDetailPage() {
       if (person.reportedBy) {
         formData.append("reporter_id", person.reportedBy.toString());
       }
+
+      // Add threshold parameter (convert from percentage to decimal)
+      formData.append("threshold", (matchThreshold / 100).toString());
 
       const FIND_MISSING_API_URL = process.env.NEXT_PUBLIC_IMAGE_RECOGNITION_URL;
       const response: Response = await fetch(
@@ -99,37 +104,45 @@ export default function ReportDetailPage() {
       }
 
       const responseData: any = await response.json();
-      // console.log("API response:", responseData);
 
       if (responseData.success === false) {
         // No matches found
         return;
       }
 
-      // Extract the match ID (assuming responseData.match is an array)
-      if (!responseData.match || !responseData.match[0] || !responseData.match[0].id) {
-        setMatchingResult(null);
+      // Check if we have any matches
+      if (!responseData.match || responseData.match.length === 0) {
+        setMatchingResults([]);
         return;
       }
 
-      // Extract the ID as a string to ensure it's properly formatted
-      const matchId = String(responseData.match[0].id);
+      // Process all matches (up to 3)
+      const matchPromises = responseData.match.map(async (match: any) => {
+        // Extract the ID as a string to ensure it's properly formatted
+        const matchId = String(match.id);
 
-      // Fetch matching result using the received ID
-      const matchingResponse = await fetch(`${API_URL}/missing-persons/${matchId}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
+        // Fetch matching result using the received ID
+        const matchingResponse = await fetch(`${API_URL}/missing-persons/${matchId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        });
+
+        if (!matchingResponse.ok) {
+          return null;
+        }
+
+        const matchingData = await matchingResponse.json();
+        return matchingData.data || null;
       });
 
-      if (!matchingResponse.ok) {
-        throw new Error("Failed to fetch matching results");
-      }
+      // Wait for all fetch operations to complete
+      const results = await Promise.all(matchPromises);
 
-      const matchingData = await matchingResponse.json();
-      // console.log("Matching data:", matchingData.data);
-      // Store the matching result as a single object
-      setMatchingResult(matchingData.data || null);
+      // Filter out any null results
+      const validResults = results.filter(result => result !== null);
+
+      setMatchingResults(validResults);
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.error("Error in handleSearchMatches:", error.message);
@@ -188,20 +201,22 @@ export default function ReportDetailPage() {
           <div className="grid gap-6 sm:gap-8 md:grid-cols-2">
             <div className="space-y-3">
               <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm sm:text-base text-muted-foreground mb-2 flex items-center gap-2">
-                  <MapPin className="h-4 w-4 flex-shrink-0" />
-                  <span className="flex-grow break-words">{report.location}</span>
-                </p>
-                <p className="text-sm sm:text-base text-muted-foreground mb-2 flex items-center gap-2">
-                  <Calendar className="h-4 w-4 flex-shrink-0" />
-                  <span className="flex-grow">
-                    Reported on: {new Date(report.createdAt).toLocaleDateString()}
-                  </span>
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm sm:text-base text-muted-foreground flex items-start gap-2">
+                    <MapPin className="h-4 w-4 flex-shrink-0 mt-1" />
+                    <span className="flex-grow break-words">{report.location}</span>
+                  </p>
+                  <p className="text-sm sm:text-base text-muted-foreground flex items-start gap-2">
+                    <Calendar className="h-4 w-4 flex-shrink-0 mt-1" />
+                    <span className="flex-grow">
+                      Reported on: {new Date(report.createdAt).toLocaleDateString()}
+                    </span>
+                  </p>
+                </div>
               </div>
               <div className="p-4 bg-gray-50 rounded-lg">
                 <h4 className="font-medium mb-2 text-sm sm:text-base">Description</h4>
-                <p className="text-sm sm:text-base text-gray-700 whitespace-pre-line">{report.description}</p>
+                <p className="text-sm sm:text-base text-gray-700 whitespace-pre-line break-words">{report.description}</p>
               </div>
             </div>
             <div>
@@ -213,20 +228,22 @@ export default function ReportDetailPage() {
                       className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow"
                       onClick={() => setSelectedImage(photo)}
                     >
-                      <Image
-                        src={photo || "/placeholder.svg"}
-                        alt={`Photo ${index + 1}`}
-                        fill
-                        sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, (max-width: 1024px) 25vw, 300px"
-                        className="rounded-lg object-cover object-[center_25%] transition-transform duration-300 group-hover:scale-105"
-                        priority
-                        onError={(e) => {
-                          // When image fails to load, replace with placeholder
-                          const target = e.target as HTMLImageElement;
-                          target.onerror = null; // Prevent infinite loop
-                          target.src = "/placeholder.svg";
-                        }}
-                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Image
+                          src={photo || "/placeholder.svg"}
+                          alt={`Photo ${index + 1}`}
+                          fill
+                          sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, (max-width: 1024px) 25vw, 300px"
+                          className="rounded-lg object-cover object-center transition-transform duration-300 group-hover:scale-105"
+                          priority
+                          onError={(e) => {
+                            // When image fails to load, replace with placeholder
+                            const target = e.target as HTMLImageElement;
+                            target.onerror = null; // Prevent infinite loop
+                            target.src = "/placeholder.svg";
+                          }}
+                        />
+                      </div>
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
                         <Maximize2 className="text-white h-6 w-6 sm:h-8 sm:w-8" />
                       </div>
@@ -240,34 +257,62 @@ export default function ReportDetailPage() {
               )}
             </div>
           </div>
-          {/* Search for Matches Button */}
+          {/* Match Threshold Slider */}
           <div className="mt-8 sm:mt-10">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <Button
-                onClick={() => handleSearchMatches(report)}
-                disabled={isSearching}
-                className="w-full sm:w-auto"
-              >
-                {isSearching ? (
-                  <span className="flex items-center gap-2">
-                    <div className="animate-spin">
-                      <svg className="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    </div>
-                    <span>Searching...</span>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                  <label htmlFor="match-threshold" className="text-sm font-medium">
+                    Match Threshold: {matchThreshold}%
+                  </label>
+                  <span className="text-xs text-muted-foreground">
+                    Higher values show more accurate matches
                   </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <Search className="h-4 w-4" />
-                    <span>Search for Matches</span>
-                  </span>
-                )}
-              </Button>
-              <p className="text-sm text-muted-foreground">
-                Search for potential matches in missing persons database
-              </p>
+                </div>
+                <Slider
+                  id="match-threshold"
+                  min={50}
+                  max={95}
+                  step={5}
+                  value={[matchThreshold]}
+                  onValueChange={(value) => setMatchThreshold(value[0])}
+                  className="w-full"
+                  disabled={isSearching}
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>50%</span>
+                  <span>95%</span>
+                </div>
+              </div>
+
+              {/* Search for Matches Button */}
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                <Button
+                  onClick={() => handleSearchMatches(report)}
+                  disabled={isSearching}
+                  className="w-full sm:w-auto"
+                >
+                  {isSearching ? (
+                    <span className="flex items-center gap-2">
+                      <div className="animate-spin">
+                        <svg className="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </div>
+                      <span>Searching...</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Search className="h-4 w-4" />
+                      <span>Search for Matches</span>
+                    </span>
+                  )}
+                </Button>
+                <p className="text-sm text-muted-foreground text-center sm:text-left">
+                  Search for potential matches in missing persons database
+                </p>
+              </div>
             </div>
           </div>
           {isSearching && (
@@ -287,8 +332,13 @@ export default function ReportDetailPage() {
           )}
           {!isSearching && (
             <div className="mt-8">
-              {matchingResult ? (
-                <MatchingResult result={matchingResult} />
+              {matchingResults.length > 0 ? (
+                <div className="space-y-6">
+                  <h3 className="text-lg sm:text-xl font-semibold">Matching Results ({matchingResults.length})</h3>
+                  {matchingResults.map((result, index) => (
+                    <MatchingResult key={result._id || index} result={result} />
+                  ))}
+                </div>
               ) : (
                 <div className="p-6 bg-gray-50 rounded-lg text-center">
                   <p className="text-gray-500">No matches found.</p>
@@ -311,21 +361,23 @@ export default function ReportDetailPage() {
             </DialogClose>
             {selectedImage && (
               <div className="relative w-full max-h-[85vh] flex items-center justify-center p-2 sm:p-4">
-                <Image
-                  src={selectedImage || "/placeholder.svg"}
-                  alt="Enlarged photo"
-                  width={1200}
-                  height={800}
-                  sizes="(max-width: 640px) 95vw, (max-width: 768px) 90vw, (max-width: 1024px) 85vw, 1200px"
-                  className="object-contain max-h-[85vh] rounded-lg shadow-xl"
-                  priority
-                  onError={(e) => {
-                    // When image fails to load, replace with placeholder
-                    const target = e.target as HTMLImageElement;
-                    target.onerror = null; // Prevent infinite loop
-                    target.src = "/placeholder.svg";
-                  }}
-                />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <Image
+                    src={selectedImage || "/placeholder.svg"}
+                    alt="Enlarged photo"
+                    width={1200}
+                    height={800}
+                    sizes="(max-width: 640px) 95vw, (max-width: 768px) 90vw, (max-width: 1024px) 85vw, 1200px"
+                    className="object-contain max-h-[85vh] rounded-lg shadow-xl"
+                    priority
+                    onError={(e) => {
+                      // When image fails to load, replace with placeholder
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null; // Prevent infinite loop
+                      target.src = "/placeholder.svg";
+                    }}
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -334,6 +386,88 @@ export default function ReportDetailPage() {
     </div>
   );
 }
+
+// Shared image modal component for all matching results
+const MatchResultImageModal = ({ selectedImage, setSelectedImage }: { selectedImage: string | null, setSelectedImage: (image: string | null) => void }) => {
+  if (!selectedImage) return null;
+
+  return (
+    <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+      <DialogContent className="max-w-[95vw] sm:max-w-[90vw] md:max-w-[85vw] lg:max-w-4xl p-0 overflow-hidden bg-transparent border-none">
+        <div className="relative w-full h-full flex items-center justify-center">
+          <DialogClose className="absolute top-2 right-2 z-10 rounded-full p-2 bg-black/50 text-white hover:bg-black/70">
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
+          </DialogClose>
+          <div className="relative w-full max-h-[85vh] flex items-center justify-center p-2 sm:p-4">
+            <div className="relative w-full h-full flex items-center justify-center">
+              <Image
+                src={selectedImage || "/placeholder.svg"}
+                alt="Enlarged photo"
+                width={1200}
+                height={800}
+                sizes="(max-width: 640px) 95vw, (max-width: 768px) 90vw, (max-width: 1024px) 85vw, 1200px"
+                className="object-contain max-h-[85vh] rounded-lg shadow-xl"
+                priority
+                onError={(e) => {
+                  // When image fails to load, replace with placeholder
+                  const target = e.target as HTMLImageElement;
+                  target.onerror = null; // Prevent infinite loop
+                  target.src = "/placeholder.svg";
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Alert confirmation dialog component
+const AlertConfirmationDialog = ({
+  open,
+  setOpen,
+  isSending,
+  onConfirm
+}: {
+  open: boolean,
+  setOpen: (open: boolean) => void,
+  isSending: boolean,
+  onConfirm: () => void
+}) => {
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogTitle>Send Alert</DialogTitle>
+        <DialogDescription>
+          Are you sure you want to send an alert for this match? This will notify the user who listed this person about the potential match. They will need to confirm the match.
+        </DialogDescription>
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={onConfirm}
+            disabled={isSending}
+            className="flex items-center gap-2"
+          >
+            {isSending ? (
+              <>
+                <Loader size="sm" />
+                <span>Sending...</span>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-4 w-4" />
+                <span>Send Alert</span>
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const MatchingResult = ({ result }: { result: any | null }) => {
   const [selectedMatchImage, setSelectedMatchImage] = useState<string | null>(null);
@@ -389,14 +523,19 @@ const MatchingResult = ({ result }: { result: any | null }) => {
       // The user can't send an alert if they own either the report or the result
       const isOwn = reporterId === user.id || reportOwner === user.id;
 
+      // Also check if the reporter of the result is the same as the reporter of the report
+      const isSameReporter = reporterId && reportOwner && reporterId === reportOwner;
+
       console.log("Checking if own listing:", {
         reporterId,
         reportOwner,
         userId: user.id,
-        isOwn
+        isOwn,
+        isSameReporter
       });
 
-      setIsOwnListing(isOwn);
+      // Set isOwnListing to true if either condition is met
+      setIsOwnListing(isOwn || isSameReporter);
     }
   }, [result, user, report]);
 
@@ -447,33 +586,32 @@ const MatchingResult = ({ result }: { result: any | null }) => {
   };
 
   return (
-    <div className="mt-6 sm:mt-8">
-      <h3 className="text-lg sm:text-xl font-semibold mb-4">Matching Result</h3>
+    <>
       <Card className="overflow-hidden">
         <CardContent className="p-4 sm:p-6">
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-4">
               <div className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-semibold text-base sm:text-lg mb-2">{result.name}</h4>
+                <h4 className="font-semibold text-base sm:text-lg mb-2 break-words">{result.name}</h4>
                 <div className="space-y-2">
-                  <p className="text-sm sm:text-base text-muted-foreground flex items-center gap-2">
-                    <User className="h-4 w-4 flex-shrink-0" />
+                  <p className="text-sm sm:text-base text-muted-foreground flex items-start gap-2">
+                    <User className="h-4 w-4 flex-shrink-0 mt-1" />
                     <span className="flex-grow">Age: {result.age}, Gender: {result.gender}</span>
                   </p>
-                  <p className="text-sm sm:text-base text-muted-foreground flex items-center gap-2">
-                    <MapPin className="h-4 w-4 flex-shrink-0" />
+                  <p className="text-sm sm:text-base text-muted-foreground flex items-start gap-2">
+                    <MapPin className="h-4 w-4 flex-shrink-0 mt-1" />
                     <span className="flex-grow break-words">Last seen: {result.lastSeenLocation}</span>
                   </p>
-                  <p className="text-sm sm:text-base text-muted-foreground flex items-center gap-2">
-                    <Calendar className="h-4 w-4 flex-shrink-0" />
+                  <p className="text-sm sm:text-base text-muted-foreground flex items-start gap-2">
+                    <Calendar className="h-4 w-4 flex-shrink-0 mt-1" />
                     <span className="flex-grow">
                       Missing since: {new Date(result.missingDate).toLocaleDateString()}
                     </span>
                   </p>
                   {result.reportedBy && (
-                    <p className="text-sm sm:text-base text-muted-foreground flex items-center gap-2">
-                      <User className="h-4 w-4 flex-shrink-0" />
-                      <span className="flex-grow">
+                    <p className="text-sm sm:text-base text-muted-foreground flex items-start gap-2">
+                      <User className="h-4 w-4 flex-shrink-0 mt-1" />
+                      <span className="flex-grow break-words">
                         Listed by: {result.reportedBy.username || result.reportedBy.fullname || "Anonymous"}
                       </span>
                     </p>
@@ -482,14 +620,14 @@ const MatchingResult = ({ result }: { result: any | null }) => {
               </div>
               <div className="p-4 bg-gray-50 rounded-lg">
                 <h4 className="font-medium mb-2 text-sm sm:text-base">Description</h4>
-                <p className="text-sm sm:text-base text-gray-700 whitespace-pre-line">{result.description}</p>
+                <p className="text-sm sm:text-base text-gray-700 whitespace-pre-line break-words">{result.description}</p>
               </div>
 
               {/* Send Alert Button */}
               {isOwnListing ? (
                 <div className="w-full p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-700 text-sm flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>Cannot send alert to your own listing</span>
+                  <span className="break-words">Cannot send alert to your own listing</span>
                 </div>
               ) : (
                 <Button
@@ -511,19 +649,21 @@ const MatchingResult = ({ result }: { result: any | null }) => {
                       className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow"
                       onClick={() => setSelectedMatchImage(photo)}
                     >
-                      <Image
-                        src={photo || "/placeholder.svg"}
-                        alt={`Missing person photo ${photoIndex + 1}`}
-                        fill
-                        sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, (max-width: 1024px) 25vw, 200px"
-                        className="rounded-lg object-cover object-[center_25%] transition-transform duration-300 group-hover:scale-105"
-                        onError={(e) => {
-                          // When image fails to load, replace with placeholder
-                          const target = e.target as HTMLImageElement;
-                          target.onerror = null; // Prevent infinite loop
-                          target.src = "/placeholder.svg";
-                        }}
-                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Image
+                          src={photo || "/placeholder.svg"}
+                          alt={`Missing person photo ${photoIndex + 1}`}
+                          fill
+                          sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, (max-width: 1024px) 25vw, 200px"
+                          className="rounded-lg object-cover object-center transition-transform duration-300 group-hover:scale-105"
+                          onError={(e) => {
+                            // When image fails to load, replace with placeholder
+                            const target = e.target as HTMLImageElement;
+                            target.onerror = null; // Prevent infinite loop
+                            target.src = "/placeholder.svg";
+                          }}
+                        />
+                      </div>
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
                         <Maximize2 className="text-white h-5 w-5 sm:h-6 sm:w-6" />
                       </div>
@@ -540,67 +680,19 @@ const MatchingResult = ({ result }: { result: any | null }) => {
         </CardContent>
       </Card>
 
-      {/* Image Modal for Matching Results */}
-      <Dialog open={!!selectedMatchImage} onOpenChange={(open) => !open && setSelectedMatchImage(null)}>
-        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] md:max-w-[85vw] lg:max-w-4xl p-0 overflow-hidden bg-transparent border-none">
-          <div className="relative w-full h-full flex items-center justify-center">
-            <DialogClose className="absolute top-2 right-2 z-10 rounded-full p-2 bg-black/50 text-white hover:bg-black/70">
-              <X className="h-4 w-4 sm:h-5 sm:w-5" />
-            </DialogClose>
-            {selectedMatchImage && (
-              <div className="relative w-full max-h-[85vh] flex items-center justify-center p-2 sm:p-4">
-                <Image
-                  src={selectedMatchImage || "/placeholder.svg"}
-                  alt="Enlarged photo"
-                  width={1200}
-                  height={800}
-                  sizes="(max-width: 640px) 95vw, (max-width: 768px) 90vw, (max-width: 1024px) 85vw, 1200px"
-                  className="object-contain max-h-[85vh] rounded-lg shadow-xl"
-                  priority
-                  onError={(e) => {
-                    // When image fails to load, replace with placeholder
-                    const target = e.target as HTMLImageElement;
-                    target.onerror = null; // Prevent infinite loop
-                    target.src = "/placeholder.svg";
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Image Modal */}
+      <MatchResultImageModal
+        selectedImage={selectedMatchImage}
+        setSelectedImage={setSelectedMatchImage}
+      />
 
-      {/* Alert Confirmation Dialog */}
-      <Dialog open={showAlertDialog} onOpenChange={setShowAlertDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogTitle>Send Alert</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to send an alert for this match? This will notify the user who listed this missing person about the potential match. They will need to confirm the match.
-          </DialogDescription>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-end">
-            <Button variant="outline" onClick={() => setShowAlertDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSendAlert}
-              disabled={isSendingAlert}
-              className="flex items-center gap-2"
-            >
-              {isSendingAlert ? (
-                <>
-                  <Loader size="sm" />
-                  <span>Sending...</span>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="h-4 w-4" />
-                  <span>Send Alert</span>
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+      {/* Alert Dialog */}
+      <AlertConfirmationDialog
+        open={showAlertDialog}
+        setOpen={setShowAlertDialog}
+        isSending={isSendingAlert}
+        onConfirm={handleSendAlert}
+      />
+    </>
   );
 };

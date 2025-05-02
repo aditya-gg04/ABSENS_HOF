@@ -167,6 +167,17 @@ export default function MyReportsPage() {
               className="group relative rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => router.push(`/report/${report._id}`)}
             >
+              {/* Status Badge */}
+              <div className={`absolute top-2 right-2 z-10 px-2 py-1 rounded-full text-xs font-medium ${
+                report.status.toLowerCase() === "verified"
+                  ? "bg-green-100 text-green-800"
+                  : report.status.toLowerCase() === "rejected"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-yellow-100 text-yellow-800"
+              }`}>
+                {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
+              </div>
+
               {/* Image Container - Larger and more prominent */}
               <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-100">
                 {report.photos && report.photos.length > 0 ? (

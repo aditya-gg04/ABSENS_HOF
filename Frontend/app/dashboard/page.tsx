@@ -481,25 +481,25 @@ const DashboardPage: React.FC = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
             <div className="flex items-center">
-              <FileText className="h-8 w-8 text-blue-500" />
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Total Cases</p>
-                <p className="text-2xl font-bold">
+              <FileText className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-blue-500 flex-shrink-0" />
+              <div className="ml-2 sm:ml-3 md:ml-4">
+                <p className="text-xs sm:text-sm text-gray-600">Total Cases</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold">
                   {currentUser.reportedCases.length +
                     currentUser.missingCases.length}
                 </p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
             <div className="flex items-center">
-              <AlertTriangle className="h-8 w-8 text-yellow-500" />
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Reported Cases</p>
-                <p className="text-2xl font-bold">
+              <AlertTriangle className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-yellow-500 flex-shrink-0" />
+              <div className="ml-2 sm:ml-3 md:ml-4">
+                <p className="text-xs sm:text-sm text-gray-600">Reported Cases</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold">
                   {
                     currentUser.reportedCases.filter(
                       (c) => c.status.toLowerCase() === "pending"
@@ -509,12 +509,12 @@ const DashboardPage: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
             <div className="flex items-center">
-              <CheckCircle className="h-8 w-8 text-green-500" />
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Resolved Cases</p>
-                <p className="text-2xl font-bold">
+              <CheckCircle className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-green-500 flex-shrink-0" />
+              <div className="ml-2 sm:ml-3 md:ml-4">
+                <p className="text-xs sm:text-sm text-gray-600">Resolved Cases</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold">
                   {
                     currentUser.reportedCases.filter(
                       (c) => c.status.toLowerCase() === "resolved" || c.status.toLowerCase() === "verified"
@@ -527,12 +527,12 @@ const DashboardPage: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
             <div className="flex items-center">
-              <Search className="h-8 w-8 text-purple-500" />
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Missing Cases</p>
-                <p className="text-2xl font-bold">
+              <Search className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-purple-500 flex-shrink-0" />
+              <div className="ml-2 sm:ml-3 md:ml-4">
+                <p className="text-xs sm:text-sm text-gray-600">Missing Cases</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold">
                   {currentUser.missingCases.filter(c => c.status.toLowerCase() === "missing").length}
                 </p>
               </div>
@@ -542,14 +542,14 @@ const DashboardPage: React.FC = () => {
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
+          <div className="border-b border-gray-200 overflow-x-auto">
+            <nav className="flex -mb-px whitespace-nowrap min-w-full">
               <button
                 onClick={() => {
                   setActiveTab("overview");
                   router.push("/dashboard?tab=overview", { scroll: false });
                 }}
-                className={`px-6 py-4 text-sm font-medium ${
+                className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium ${
                   activeTab === "overview"
                     ? "border-b-2 border-indigo-500 text-indigo-600"
                     : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -562,7 +562,7 @@ const DashboardPage: React.FC = () => {
                   setActiveTab("reported");
                   router.push("/dashboard?tab=reported", { scroll: false });
                 }}
-                className={`px-6 py-4 text-sm font-medium ${
+                className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium ${
                   activeTab === "reported"
                     ? "border-b-2 border-indigo-500 text-indigo-600"
                     : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -575,7 +575,7 @@ const DashboardPage: React.FC = () => {
                   setActiveTab("missing");
                   router.push("/dashboard?tab=missing", { scroll: false });
                 }}
-                className={`px-6 py-4 text-sm font-medium ${
+                className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium ${
                   activeTab === "missing"
                     ? "border-b-2 border-indigo-500 text-indigo-600"
                     : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -588,7 +588,7 @@ const DashboardPage: React.FC = () => {
                   setActiveTab("resolved");
                   router.push("/dashboard?tab=resolved", { scroll: false });
                 }}
-                className={`px-6 py-4 text-sm font-medium ${
+                className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium ${
                   activeTab === "resolved"
                     ? "border-b-2 border-indigo-500 text-indigo-600"
                     : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -655,55 +655,55 @@ const DashboardPage: React.FC = () => {
                   <h3 className="text-lg font-medium mb-4">Statistics</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Case Status Distribution */}
-                    <div className="bg-white p-4 rounded-lg shadow">
-                      <div className="flex items-center mb-4">
-                        <PieChart className="h-5 w-5 text-indigo-500 mr-2" />
-                        <h4 className="text-md font-medium">Case Status</h4>
+                    <div className="bg-white p-3 sm:p-4 rounded-lg shadow">
+                      <div className="flex items-center mb-3 sm:mb-4">
+                        <PieChart className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-500 mr-1 sm:mr-2 flex-shrink-0" />
+                        <h4 className="text-sm sm:text-md font-medium">Case Status</h4>
                       </div>
-                      <div className="flex items-center justify-around py-4">
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-yellow-500">
+                      <div className="flex items-center justify-around py-2 sm:py-4">
+                        <div className="text-center px-1">
+                          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-yellow-500">
                             {currentUser.reportedCases.filter(c => c.status.toLowerCase() === "pending").length}
                           </div>
-                          <div className="text-sm text-gray-500">Pending</div>
+                          <div className="text-xs sm:text-sm text-gray-500">Pending</div>
                         </div>
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-green-500">
+                        <div className="text-center px-1">
+                          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-green-500">
                             {currentUser.reportedCases.filter(c => c.status.toLowerCase() === "resolved" || c.status.toLowerCase() === "verified").length +
                              currentUser.missingCases.filter(c => c.status.toLowerCase() === "found").length}
                           </div>
-                          <div className="text-sm text-gray-500">Resolved</div>
+                          <div className="text-xs sm:text-sm text-gray-500">Resolved</div>
                         </div>
-                        <div className="text-center">
-                          <div className="text-3xl font-bold text-red-500">
+                        <div className="text-center px-1">
+                          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-red-500">
                             {currentUser.missingCases.filter(c => c.status.toLowerCase() === "missing").length}
                           </div>
-                          <div className="text-sm text-gray-500">Missing</div>
+                          <div className="text-xs sm:text-sm text-gray-500">Missing</div>
                         </div>
                       </div>
                     </div>
 
                     {/* Activity Timeline */}
-                    <div className="bg-white p-4 rounded-lg shadow">
-                      <div className="flex items-center mb-4">
-                        <Activity className="h-5 w-5 text-indigo-500 mr-2" />
-                        <h4 className="text-md font-medium">Activity Summary</h4>
+                    <div className="bg-white p-3 sm:p-4 rounded-lg shadow">
+                      <div className="flex items-center mb-3 sm:mb-4">
+                        <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-500 mr-1 sm:mr-2 flex-shrink-0" />
+                        <h4 className="text-sm sm:text-md font-medium">Activity Summary</h4>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Total Cases</span>
-                          <span className="font-medium">{currentUser.reportedCases.length + currentUser.missingCases.length}</span>
+                          <span className="text-xs sm:text-sm text-gray-600">Total Cases</span>
+                          <span className="text-xs sm:text-sm font-medium">{currentUser.reportedCases.length + currentUser.missingCases.length}</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: '100%' }}></div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2.5">
+                          <div className="bg-indigo-600 h-1.5 sm:h-2.5 rounded-full" style={{ width: '100%' }}></div>
                         </div>
 
                         <div className="flex justify-between items-center mt-2">
-                          <span className="text-sm text-gray-600">Reported Sightings</span>
-                          <span className="font-medium">{currentUser.reportedCases.length}</span>
+                          <span className="text-xs sm:text-sm text-gray-600">Reported Sightings</span>
+                          <span className="text-xs sm:text-sm font-medium">{currentUser.reportedCases.length}</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div className="bg-yellow-500 h-2.5 rounded-full" style={{
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2.5">
+                          <div className="bg-yellow-500 h-1.5 sm:h-2.5 rounded-full" style={{
                             width: `${currentUser.reportedCases.length > 0
                               ? (currentUser.reportedCases.length / (currentUser.reportedCases.length + currentUser.missingCases.length) * 100)
                               : 0}%`
@@ -711,11 +711,11 @@ const DashboardPage: React.FC = () => {
                         </div>
 
                         <div className="flex justify-between items-center mt-2">
-                          <span className="text-sm text-gray-600">Missing Persons</span>
-                          <span className="font-medium">{currentUser.missingCases.length}</span>
+                          <span className="text-xs sm:text-sm text-gray-600">Missing Persons</span>
+                          <span className="text-xs sm:text-sm font-medium">{currentUser.missingCases.length}</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div className="bg-purple-500 h-2.5 rounded-full" style={{
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2.5">
+                          <div className="bg-purple-500 h-1.5 sm:h-2.5 rounded-full" style={{
                             width: `${currentUser.missingCases.length > 0
                               ? (currentUser.missingCases.length / (currentUser.reportedCases.length + currentUser.missingCases.length) * 100)
                               : 0}%`
@@ -728,35 +728,35 @@ const DashboardPage: React.FC = () => {
 
                 {/* Quick Actions */}
                 <div>
-                  <h3 className="text-lg font-medium mb-4">Quick Actions</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    <Link href="/report" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
-                      <div className="bg-yellow-100 p-3 rounded-full mr-3">
-                        <AlertTriangle className="h-6 w-6 text-yellow-500" />
+                  <h3 className="text-lg font-medium mb-3 sm:mb-4">Quick Actions</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                    <Link href="/report" className="bg-white p-3 sm:p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
+                      <div className="bg-yellow-100 p-2 sm:p-3 rounded-full mr-2 sm:mr-3 flex-shrink-0">
+                        <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500" />
                       </div>
                       <div>
-                        <h4 className="font-medium">Report Sighting</h4>
-                        <p className="text-sm text-gray-500">Report a missing person sighting</p>
+                        <h4 className="text-sm sm:text-base font-medium">Report Sighting</h4>
+                        <p className="text-xs sm:text-sm text-gray-500">Report a missing person sighting</p>
                       </div>
                     </Link>
 
-                    <Link href="/find" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
-                      <div className="bg-purple-100 p-3 rounded-full mr-3">
-                        <Search className="h-6 w-6 text-purple-500" />
+                    <Link href="/find" className="bg-white p-3 sm:p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
+                      <div className="bg-purple-100 p-2 sm:p-3 rounded-full mr-2 sm:mr-3 flex-shrink-0">
+                        <Search className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500" />
                       </div>
                       <div>
-                        <h4 className="font-medium">Find Missing</h4>
-                        <p className="text-sm text-gray-500">Report a missing person</p>
+                        <h4 className="text-sm sm:text-base font-medium">Find Missing</h4>
+                        <p className="text-xs sm:text-sm text-gray-500">Report a missing person</p>
                       </div>
                     </Link>
 
-                    <Link href="/alerts" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
-                      <div className="bg-blue-100 p-3 rounded-full mr-3">
-                        <Bell className="h-6 w-6 text-blue-500" />
+                    <Link href="/alerts" className="bg-white p-3 sm:p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
+                      <div className="bg-blue-100 p-2 sm:p-3 rounded-full mr-2 sm:mr-3 flex-shrink-0">
+                        <Bell className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
                       </div>
                       <div>
-                        <h4 className="font-medium">View Alerts</h4>
-                        <p className="text-sm text-gray-500">Check recent alerts</p>
+                        <h4 className="text-sm sm:text-base font-medium">View Alerts</h4>
+                        <p className="text-xs sm:text-sm text-gray-500">Check recent alerts</p>
                       </div>
                     </Link>
                   </div>
@@ -764,25 +764,25 @@ const DashboardPage: React.FC = () => {
 
                 {/* View All Listings Section */}
                 <div>
-                  <h3 className="text-lg font-medium mb-4">My Listings</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Link href="/my-missing" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
-                      <div className="bg-indigo-100 p-3 rounded-full mr-3">
-                        <Search className="h-6 w-6 text-indigo-500" />
+                  <h3 className="text-lg font-medium mb-3 sm:mb-4">My Listings</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <Link href="/my-missing" className="bg-white p-3 sm:p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
+                      <div className="bg-indigo-100 p-2 sm:p-3 rounded-full mr-2 sm:mr-3 flex-shrink-0">
+                        <Search className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-500" />
                       </div>
                       <div>
-                        <h4 className="font-medium">My Missing Person Listings</h4>
-                        <p className="text-sm text-gray-500">View all your missing person listings</p>
+                        <h4 className="text-sm sm:text-base font-medium">My Missing Person Listings</h4>
+                        <p className="text-xs sm:text-sm text-gray-500">View all your missing person listings</p>
                       </div>
                     </Link>
 
-                    <Link href="/my-reports" className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
-                      <div className="bg-green-100 p-3 rounded-full mr-3">
-                        <AlertTriangle className="h-6 w-6 text-green-500" />
+                    <Link href="/my-reports" className="bg-white p-3 sm:p-4 rounded-lg shadow hover:shadow-md transition-shadow flex items-center">
+                      <div className="bg-green-100 p-2 sm:p-3 rounded-full mr-2 sm:mr-3 flex-shrink-0">
+                        <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
                       </div>
                       <div>
-                        <h4 className="font-medium">My Reported Sightings</h4>
-                        <p className="text-sm text-gray-500">View all your reported sightings</p>
+                        <h4 className="text-sm sm:text-base font-medium">My Reported Sightings</h4>
+                        <p className="text-xs sm:text-sm text-gray-500">View all your reported sightings</p>
                       </div>
                     </Link>
                   </div>
