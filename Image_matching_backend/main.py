@@ -73,7 +73,7 @@ async def process_images(user_id: str, image_urls: List[str]):
     final_embedding = np.mean(embeddings, axis=0)
     return [float(x) for x in final_embedding]
 
-async def search_embeddings(vector, namespace: str, reporter_id: str = None):
+async def search_embeddings(vector, namespace: str, reporter_id: str = None, threshold: float = 0.7):
     """Common function to search embeddings in Pinecone"""
     try:
         query_response = index.query(vector=vector, top_k=10, namespace=namespace, include_metadata=True)
@@ -92,7 +92,13 @@ async def search_embeddings(vector, namespace: str, reporter_id: str = None):
 
             matches = filtered_matches
 
-        if matches and len(matches) > 0 and matches[0]["score"] > 0.7:
+        # Filter matches based on threshold
+        matches = [match for match in matches if float(match["score"]) >= threshold]
+
+        # Limit to top 3 matches
+        matches = matches[:3]
+
+        if matches and len(matches) > 0:
             match_data = [{
                 "id": match["id"],
                 "score": float(match["score"]),
@@ -140,22 +146,28 @@ async def save_report_missing(user_id: str = Form(...), image_urls: List[str] = 
     return {"success": True, "message": "Report missing person embeddings saved successfully"}
 
 @app.post("/search-find-missing")
-async def search_find_missing(user_id: str = Form(...), image_urls: List[str] = Form(...), reporter_id: str = Form(None)):
+async def search_find_missing(user_id: str = Form(...), image_urls: List[str] = Form(...), reporter_id: str = Form(None), threshold: float = Form(0.7)):
     """Search for person in report namespace"""
+    # Ensure threshold is at least 0.5 (50%)
+    threshold = max(0.5, threshold)
+
     final_embedding_list = await process_images(user_id, image_urls)
     if not final_embedding_list:
         return {"error": "No valid faces detected in any of the provided images"}
 
-    return await search_embeddings(final_embedding_list, "report", reporter_id)
+    return await search_embeddings(final_embedding_list, "report", reporter_id, threshold)
 
 @app.post("/search-report-missing")
-async def search_report_missing(user_id: str = Form(...), image_urls: List[str] = Form(...), reporter_id: str = Form(None)):
+async def search_report_missing(user_id: str = Form(...), image_urls: List[str] = Form(...), reporter_id: str = Form(None), threshold: float = Form(0.7)):
     """Search for person in find namespace"""
+    # Ensure threshold is at least 0.5 (50%)
+    threshold = max(0.5, threshold)
+
     final_embedding_list = await process_images(user_id, image_urls)
     if not final_embedding_list:
         return {"error": "No valid faces detected in any of the provided images"}
 
-    return await search_embeddings(final_embedding_list, "find", reporter_id)
+    return await search_embeddings(final_embedding_list, "find", reporter_id, threshold)
 
 @app.get("/list-embeddings")
 async def list_embeddings():
