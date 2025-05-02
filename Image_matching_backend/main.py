@@ -76,7 +76,7 @@ async def process_images(user_id: str, image_urls: List[str]):
 async def search_embeddings(vector, namespace: str, reporter_id: str = None):
     """Common function to search embeddings in Pinecone"""
     try:
-        query_response = index.query(vector=vector, top_k=5, namespace=namespace, include_metadata=True)
+        query_response = index.query(vector=vector, top_k=10, namespace=namespace, include_metadata=True)
         matches = query_response["matches"]
 
         # Filter out matches from the same user if reporter_id is provided
@@ -92,7 +92,7 @@ async def search_embeddings(vector, namespace: str, reporter_id: str = None):
 
             matches = filtered_matches
 
-        if matches and len(matches) > 0 and matches[0]["score"] > 0.8:
+        if matches and len(matches) > 0 and matches[0]["score"] > 0.7:
             match_data = [{
                 "id": match["id"],
                 "score": float(match["score"]),

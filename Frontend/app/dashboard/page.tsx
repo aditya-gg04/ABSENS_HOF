@@ -124,12 +124,26 @@ const DashboardPage: React.FC = () => {
   const loggedInUser = useSelector((state: RootState) => state.auth.user);
   const currentUser: User = loggedInUser || mockUserData;
 
+  // Get the tab from URL query parameter
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const tabParam = searchParams.get('tab');
+
   // Local state for active tab and profile editing
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [activeTab, setActiveTab] = useState<string>(tabParam || "overview");
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
   const [error, setError] = useState<{ message: string; type?: ErrorType } | null>(null);
+
+  // Combined resolved cases
+  const resolvedCases = [
+    ...currentUser.reportedCases
+      .filter(c => c.status.toLowerCase() === "resolved" || c.status.toLowerCase() === "verified")
+      .map(c => ({ ...c, caseType: 'reported' })),
+    ...currentUser.missingCases
+      .filter(c => c.status.toLowerCase() === "found")
+      .map(c => ({ ...c, caseType: 'missing' }))
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const [editedProfile, setEditedProfile] = useState<UserProfile>({
     fullname: currentUser.fullname,
     email: currentUser.email,
@@ -503,7 +517,10 @@ const DashboardPage: React.FC = () => {
                 <p className="text-2xl font-bold">
                   {
                     currentUser.reportedCases.filter(
-                      (c) => c.status.toLowerCase() === "resolved"
+                      (c) => c.status.toLowerCase() === "resolved" || c.status.toLowerCase() === "verified"
+                    ).length +
+                    currentUser.missingCases.filter(
+                      (c) => c.status.toLowerCase() === "found"
                     ).length
                   }
                 </p>
@@ -516,7 +533,7 @@ const DashboardPage: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm text-gray-600">Missing Cases</p>
                 <p className="text-2xl font-bold">
-                  {currentUser.missingCases.length}
+                  {currentUser.missingCases.filter(c => c.status.toLowerCase() === "missing").length}
                 </p>
               </div>
             </div>
@@ -528,7 +545,10 @@ const DashboardPage: React.FC = () => {
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px">
               <button
-                onClick={() => setActiveTab("overview")}
+                onClick={() => {
+                  setActiveTab("overview");
+                  router.push("/dashboard?tab=overview", { scroll: false });
+                }}
                 className={`px-6 py-4 text-sm font-medium ${
                   activeTab === "overview"
                     ? "border-b-2 border-indigo-500 text-indigo-600"
@@ -538,7 +558,10 @@ const DashboardPage: React.FC = () => {
                 Overview
               </button>
               <button
-                onClick={() => setActiveTab("reported")}
+                onClick={() => {
+                  setActiveTab("reported");
+                  router.push("/dashboard?tab=reported", { scroll: false });
+                }}
                 className={`px-6 py-4 text-sm font-medium ${
                   activeTab === "reported"
                     ? "border-b-2 border-indigo-500 text-indigo-600"
@@ -548,7 +571,10 @@ const DashboardPage: React.FC = () => {
                 Reported Cases
               </button>
               <button
-                onClick={() => setActiveTab("missing")}
+                onClick={() => {
+                  setActiveTab("missing");
+                  router.push("/dashboard?tab=missing", { scroll: false });
+                }}
                 className={`px-6 py-4 text-sm font-medium ${
                   activeTab === "missing"
                     ? "border-b-2 border-indigo-500 text-indigo-600"
@@ -556,6 +582,19 @@ const DashboardPage: React.FC = () => {
                 }`}
               >
                 Missing Cases
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("resolved");
+                  router.push("/dashboard?tab=resolved", { scroll: false });
+                }}
+                className={`px-6 py-4 text-sm font-medium ${
+                  activeTab === "resolved"
+                    ? "border-b-2 border-indigo-500 text-indigo-600"
+                    : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Resolved Cases
               </button>
             </nav>
           </div>
@@ -630,13 +669,14 @@ const DashboardPage: React.FC = () => {
                         </div>
                         <div className="text-center">
                           <div className="text-3xl font-bold text-green-500">
-                            {currentUser.reportedCases.filter(c => c.status.toLowerCase() === "resolved").length}
+                            {currentUser.reportedCases.filter(c => c.status.toLowerCase() === "resolved" || c.status.toLowerCase() === "verified").length +
+                             currentUser.missingCases.filter(c => c.status.toLowerCase() === "found").length}
                           </div>
                           <div className="text-sm text-gray-500">Resolved</div>
                         </div>
                         <div className="text-center">
                           <div className="text-3xl font-bold text-red-500">
-                            {currentUser.missingCases.length}
+                            {currentUser.missingCases.filter(c => c.status.toLowerCase() === "missing").length}
                           </div>
                           <div className="text-sm text-gray-500">Missing</div>
                         </div>
@@ -849,6 +889,98 @@ const DashboardPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {activeTab === "resolved" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium">Resolved Cases</h3>
+                {resolvedCases.length === 0 ? (
+                  <div className="p-6 text-center bg-gray-50 rounded-lg">
+                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No Resolved Cases</h4>
+                    <p className="text-gray-500">You don&apos;t have any resolved cases yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {resolvedCases.map((caseItem) => (
+                      <div
+                        key={caseItem._id}
+                        className="p-4 bg-gray-50 rounded-lg shadow hover:bg-gray-100 transition-colors cursor-pointer"
+                        onClick={() => caseItem.caseType === 'missing'
+                          ? handleViewMissingCase(caseItem._id)
+                          : handleViewReportedCase(caseItem._id)
+                        }
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center space-x-2">
+                            {caseItem.caseType === 'missing' ? (
+                              <Search className="h-6 w-6 text-purple-500" />
+                            ) : (
+                              <AlertTriangle className="h-6 w-6 text-yellow-500" />
+                            )}
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{caseItem.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {caseItem.caseType === 'missing' ? 'Missing Person' : 'Reported Sighting'}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
+                            {caseItem.status}
+                          </span>
+                        </div>
+
+                        {caseItem.caseType === 'missing' ? (
+                          <>
+                            <p className="text-sm text-gray-500 mt-2">
+                              Missing Date: {new Date((caseItem as MissingCase).missingDate).toLocaleDateString()}
+                            </p>
+                            <p className="mt-2 text-gray-600">
+                              <strong>Last Seen: </strong>
+                              {(caseItem as MissingCase).lastSeenLocation}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm text-gray-500 mt-2">
+                              Reported on: {new Date(caseItem.createdAt).toLocaleDateString()}
+                            </p>
+                            <p className="mt-2 text-gray-600">
+                              <strong>Location: </strong>
+                              {(caseItem as ReportedCase).location}
+                            </p>
+                          </>
+                        )}
+
+                        <p className="mt-2 text-gray-700">
+                          {caseItem.description}
+                        </p>
+
+                        {caseItem.photos && caseItem.photos.length > 0 && (
+                          <div className="mt-2 flex space-x-2">
+                            {caseItem.photos.map((photo, index) => (
+                              <Image
+                                key={index}
+                                src={photo}
+                                alt={`Photo ${index + 1}`}
+                                className="h-16 w-16 rounded object-cover"
+                                height={64}
+                                width={64}
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex justify-end">
+                          <div className="flex items-center text-primary hover:text-primary/80 text-sm font-medium">
+                            View details <ArrowRight className="ml-1 h-4 w-4" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

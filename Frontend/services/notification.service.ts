@@ -22,8 +22,10 @@ export const fetchNotifications = async (page = 1, limit = 10): Promise<{ notifi
   }
 };
 
-export const sendMatchAlert = async (missingPersonId: string, matchId: string): Promise<boolean> => {
+export const sendMatchAlert = async (missingPersonId: string, matchId: string): Promise<{ success: boolean, message?: string }> => {
   try {
+    // console.log("Sending match alert with params:", { missingPersonId, matchId });
+
     const response = await fetch(`${API_URL}/notifications/match-alert`, {
       method: "POST",
       headers: {
@@ -36,14 +38,26 @@ export const sendMatchAlert = async (missingPersonId: string, matchId: string): 
       }),
     });
 
+    const data = await response.json();
+    // console.log("Match alert response:", { status: response.status, data });
+
     if (!response.ok) {
-      throw new Error("Failed to send match alert");
+      return {
+        success: false,
+        message: data.message || "Failed to send match alert"
+      };
     }
 
-    return true;
+    return {
+      success: true,
+      message: data.message || "Alert sent successfully"
+    };
   } catch (error) {
     console.error("Error sending match alert:", error);
-    return false;
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "An unexpected error occurred"
+    };
   }
 };
 

@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Notification } from "@/lib/slices/dataSlice";
 import { PageLoader } from "@/components/ui/page-loader";
 import { toast } from "sonner";
+import { refreshUserData } from "@/services/user.service";
 
 export default function AlertsPage() {
   const dispatch = useDispatch();
@@ -49,7 +50,7 @@ export default function AlertsPage() {
         dispatch(setNotifications(notifs));
         setTotalPages(pagination.pages);
       } catch (error) {
-        console.error("Error loading notifications:", error);
+        // console.error("Error loading notifications:", error);
       } finally {
         setIsLoading(false);
         setIsPageLoading(false);
@@ -64,7 +65,7 @@ export default function AlertsPage() {
       await markNotificationsAsRead(notificationIds);
       dispatch(markAsRead(notificationIds));
     } catch (error) {
-      console.error("Error marking notifications as read:", error);
+      // console.error("Error marking notifications as read:", error);
     }
   };
 
@@ -79,11 +80,14 @@ export default function AlertsPage() {
       handleMarkAsRead([notification._id]);
     }
 
-    // Navigate to the appropriate page
-    if (notification.relatedModel === "MissingPerson") {
+    // Navigate to the appropriate page with the specific ID
+    if (notification.relatedModel === "MissingPerson" && notification.relatedId) {
       router.push(`/missing/${notification.relatedId}`);
-    } else if (notification.relatedModel === "SightingReport") {
+    } else if (notification.relatedModel === "SightingReport" && notification.relatedId) {
       router.push(`/report/${notification.relatedId}`);
+    } else if (notification.type === "STATUS_UPDATE") {
+      // For status updates, go to the dashboard resolved cases tab
+      router.push(`/dashboard?tab=resolved`);
     }
   };
 
@@ -99,13 +103,18 @@ export default function AlertsPage() {
       const { notifications: notifs } = await fetchNotifications(currentPage, 10);
       dispatch(setNotifications(notifs));
 
+      // If match was confirmed, refresh user data to update dashboard with resolved listings
+      if (confirm) {
+        await refreshUserData(dispatch);
+      }
+
       toast(confirm ? "Match confirmed" : "Match rejected", {
         description: confirm
           ? "The case has been marked as resolved and the relevant parties have been notified."
           : "The match has been rejected."
       });
     } catch (error: any) {
-      console.error("Error confirming match:", error);
+      // console.error("Error confirming match:", error);
       toast.error("Error", {
         description: error.message || "There was a problem processing your request. Please try again."
       });

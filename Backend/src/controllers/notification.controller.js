@@ -239,12 +239,13 @@ export const confirmMatch = async (req, res) => {
         notification.isRead = true;
         await notification.save();
 
-        // If confirmed, update the missing person status and send notification
+        // If confirmed, update both listings' status and send notifications
         if (confirm === true && notification.matchData) {
-            const { missingPersonId } = notification.matchData;
+            const { missingPersonId, matchId, alertSentBy } = notification.matchData;
 
+            // First, update the missing person status (recipient's listing)
             if (missingPersonId) {
-                console.log('Updating missing person with ID:', missingPersonId);
+                // console.log('Updating missing person with ID:', missingPersonId);
 
                 try {
                     // Ensure we're using a valid ObjectId string
@@ -276,6 +277,19 @@ export const confirmMatch = async (req, res) => {
                             missingPerson.photos[0]
                         );
 
+                        // Send notification to the user who sent the alert (if available)
+                        if (alertSentBy && alertSentBy !== missingPerson.reportedBy._id.toString()) {
+                            await createNotification(
+                                alertSentBy,
+                                'STATUS_UPDATE',
+                                'Match Confirmed',
+                                `Your match for ${missingPerson.name} has been confirmed.`,
+                                missingPerson._id,
+                                'MissingPerson',
+                                missingPerson.photos[0]
+                            );
+                        }
+
                         // Send global notification
                         await createGlobalNotification(
                             'STATUS_UPDATE',
@@ -289,6 +303,111 @@ export const confirmMatch = async (req, res) => {
                 } catch (error) {
                     console.error('Error updating missing person status:', error);
                     // Continue execution even if updating the missing person fails
+                }
+            }
+
+            // Now, update the sender's listing (either a missing person or sighting report)
+            if (matchId) {
+                // console.log('Updating sender\'s listing with ID:', matchId);
+
+                try {
+                    // First, check if it's a missing person
+                    if (mongoose.Types.ObjectId.isValid(matchId)) {
+                        const matchingMissingPerson = await MissingPerson.findById(matchId);
+
+                        if (matchingMissingPerson) {
+                            // Update the matching missing person status to 'found'
+                            const updatedMatchingPerson = await MissingPerson.findByIdAndUpdate(
+                                matchId,
+                                { status: 'found' },
+                                { new: true }
+                            ).populate('reportedBy', '_id');
+
+                            if (updatedMatchingPerson && updatedMatchingPerson.reportedBy) {
+                                // Send notification to the person who reported this missing person
+                                await createNotification(
+                                    updatedMatchingPerson.reportedBy._id,
+                                    'STATUS_UPDATE',
+                                    'Missing Person Found',
+                                    `${updatedMatchingPerson.name} has been confirmed as found.`,
+                                    updatedMatchingPerson._id,
+                                    'MissingPerson',
+                                    updatedMatchingPerson.photos[0]
+                                );
+                            }
+
+                            // console.log('Updated matching missing person status to found');
+                        } else {
+                            // It might be a sighting report
+                            const matchingSightingReport = await SightingReport.findById(matchId);
+
+                            if (matchingSightingReport) {
+                                // Update the sighting report status to 'verified'
+                                const updatedSightingReport = await SightingReport.findByIdAndUpdate(
+                                    matchId,
+                                    { status: 'verified' },
+                                    { new: true }
+                                ).populate('reportedBy', '_id');
+
+                                if (updatedSightingReport && updatedSightingReport.reportedBy) {
+                                    // Send notification to the person who reported this sighting
+                                    await createNotification(
+                                        updatedSightingReport.reportedBy._id,
+                                        'STATUS_UPDATE',
+                                        'Sighting Report Verified',
+                                        `Your sighting report at ${updatedSightingReport.location} has been verified.`,
+                                        updatedSightingReport._id,
+                                        'SightingReport',
+                                        updatedSightingReport.photos[0]
+                                    );
+                                }
+
+                                // console.log('Updated matching sighting report status to verified');
+                            } else {
+                                // console.log('No matching document found for matchId:', matchId);
+                            }
+                        }
+                    } else {
+                        console.error('Invalid matchId format:', matchId);
+                    }
+                } catch (error) {
+                    console.error('Error updating sender\'s listing status:', error);
+                    // Continue execution even if updating the sender's listing fails
+                }
+            }
+        } else if (confirm === false && notification.matchData) {
+            // If rejected, send notification to the user who sent the alert
+            const { alertSentBy, missingPersonId } = notification.matchData;
+
+            if (alertSentBy) {
+                try {
+                    // Get missing person details for the notification
+                    let missingPersonName = "the person";
+                    let missingPersonPhoto = null;
+
+                    if (missingPersonId) {
+                        const missingPerson = await MissingPerson.findById(missingPersonId);
+                        if (missingPerson) {
+                            missingPersonName = missingPerson.name;
+                            missingPersonPhoto = missingPerson.photos && missingPerson.photos.length > 0
+                                ? missingPerson.photos[0]
+                                : null;
+                        }
+                    }
+
+                    // Send notification to the user who sent the alert
+                    await createNotification(
+                        alertSentBy,
+                        'STATUS_UPDATE',
+                        'Match Rejected',
+                        `Your match for ${missingPersonName} was not confirmed.`,
+                        missingPersonId,
+                        'MissingPerson',
+                        missingPersonPhoto
+                    );
+                } catch (error) {
+                    console.error('Error sending rejection notification:', error);
+                    // Continue execution even if sending notification fails
                 }
             }
         }
@@ -311,8 +430,16 @@ export const confirmMatch = async (req, res) => {
 export const sendMatchAlert = async (req, res) => {
     try {
         const { missingPersonId, matchId } = req.body;
+        const currentUserId = req.user.id; // Get the current user's ID
+
+        // console.log('sendMatchAlert called with:', {
+        //     missingPersonId,
+        //     matchId,
+        //     currentUserId
+        // });
 
         if (!missingPersonId || !matchId) {
+            // console.log('Missing required parameters:', { missingPersonId, matchId });
             return ApiResponse.error(res, {
                 statusCode: 400,
                 message: 'Missing person ID and match ID are required'
@@ -326,27 +453,73 @@ export const sendMatchAlert = async (req, res) => {
         const missingPersonDoc = await MissingPerson.findById(missingPersonId);
         const matchAsMissingPerson = await MissingPerson.findById(matchId);
 
+        // console.log('Document lookup results:', {
+        //     missingPersonDoc: missingPersonDoc ? 'found' : 'not found',
+        //     matchAsMissingPerson: matchAsMissingPerson ? 'found' : 'not found'
+        // });
+
         if (missingPersonDoc && matchAsMissingPerson) {
-            // Both are missing persons, send alerts to both reporters
+            // Both are missing persons, send alert to the person who listed the matching missing person
             missingPerson = missingPersonDoc;
             recipientId = matchAsMissingPerson.reportedBy;
             relatedModel = 'MissingPerson';
             relatedId = missingPersonId;
+
+            // console.log('Both are missing persons:', {
+            //     recipientId: recipientId ? recipientId.toString() : 'null',
+            //     currentUserId
+            // });
+
+            // Don't send alert if the recipient is the same as the current user
+            if (recipientId && recipientId.toString() === currentUserId) {
+                // console.log('Cannot send alert to own listing (both missing persons)');
+                return ApiResponse.error(res, {
+                    statusCode: 400,
+                    message: 'Cannot send alert to your own listing'
+                });
+            }
         } else {
             // Check if one is a missing person and one is a sighting report
             const sightingReportDoc = await SightingReport.findById(matchId);
+
+            // console.log('Sighting report lookup:', {
+            //     sightingReportDoc: sightingReportDoc ? 'found' : 'not found'
+            // });
 
             if (missingPersonDoc && sightingReportDoc) {
                 // Missing person to sighting report match
                 missingPerson = missingPersonDoc;
                 sightingReport = sightingReportDoc;
-                recipientId = sightingReport.reportedBy;
+
+                // The recipient should be the user who created the missing person, not the sighting report
+                recipientId = missingPerson.reportedBy;
                 relatedModel = 'MissingPerson';
                 relatedId = missingPersonId;
+
+                // console.log('Missing person to sighting report match:', {
+                //     recipientId: recipientId ? recipientId.toString() : 'null',
+                //     currentUserId,
+                //     missingPersonReportedBy: missingPerson.reportedBy ? missingPerson.reportedBy.toString() : 'null',
+                //     sightingReportReportedBy: sightingReport.reportedBy ? sightingReport.reportedBy.toString() : 'null'
+                // });
+
+                // Don't send alert if the recipient is the same as the current user
+                if (recipientId && recipientId.toString() === currentUserId) {
+                    // console.log('Cannot send alert to own listing (missing person to sighting)');
+                    return ApiResponse.error(res, {
+                        statusCode: 400,
+                        message: 'Cannot send alert to your own listing'
+                    });
+                }
             } else {
                 // Try the reverse
                 const missingPersonAsMatch = await MissingPerson.findById(matchId);
                 const sightingReportAsSource = await SightingReport.findById(missingPersonId);
+
+                // console.log('Reverse lookup results:', {
+                //     missingPersonAsMatch: missingPersonAsMatch ? 'found' : 'not found',
+                //     sightingReportAsSource: sightingReportAsSource ? 'found' : 'not found'
+                // });
 
                 if (missingPersonAsMatch && sightingReportAsSource) {
                     // Sighting report to missing person match
@@ -355,7 +528,22 @@ export const sendMatchAlert = async (req, res) => {
                     recipientId = missingPerson.reportedBy;
                     relatedModel = 'SightingReport';
                     relatedId = missingPersonId;
+
+                    // console.log('Sighting report to missing person match:', {
+                    //     recipientId: recipientId ? recipientId.toString() : 'null',
+                    //     currentUserId
+                    // });
+
+                    // Don't send alert if the recipient is the same as the current user
+                    if (recipientId && recipientId.toString() === currentUserId) {
+                        // console.log('Cannot send alert to own listing (sighting to missing person)');
+                        return ApiResponse.error(res, {
+                            statusCode: 400,
+                            message: 'Cannot send alert to your own listing'
+                        });
+                    }
                 } else {
+                    // console.log('No matching documents found');
                     return ApiResponse.error(res, {
                         statusCode: 404,
                         message: 'Missing person or sighting report not found'
@@ -365,6 +553,7 @@ export const sendMatchAlert = async (req, res) => {
         }
 
         if (!recipientId) {
+            // console.log('No recipient found');
             return ApiResponse.error(res, {
                 statusCode: 404,
                 message: 'Recipient not found'
@@ -381,49 +570,76 @@ export const sendMatchAlert = async (req, res) => {
             ? missingPerson.photos[0]
             : null;
 
+        // console.log('Creating notification with:', {
+        //     recipientId: recipientId.toString(),
+        //     title,
+        //     message,
+        //     relatedId: relatedId ? relatedId.toString() : 'null',
+        //     relatedModel
+        // });
+
         // Store match data for later use in confirmation
         // Convert ObjectIds to strings to avoid casting issues
         const matchData = {
             missingPersonId: missingPerson ? missingPerson._id.toString() : null,
             sightingReportId: sightingReport ? sightingReport._id.toString() : null,
             matchId: matchId.toString(),
-            sourceId: missingPersonId.toString()
+            sourceId: missingPersonId.toString(),
+            alertSentBy: currentUserId // Store who sent the alert for later notification
         };
 
-        // Create notification with requiresConfirmation flag
-        const notification = await Notification.create({
-            recipient: recipientId,
-            type: 'MATCH_FOUND',
-            title,
-            message,
-            relatedId,
-            relatedModel,
-            image,
-            isGlobal: false,
-            requiresConfirmation: true,
-            matchData
-        });
+        // console.log('Match data:', matchData);
 
-        // Populate related data for real-time notification
-        const populatedNotification = await Notification.findById(notification._id)
-            .populate('relatedId', 'name photos');
+        try {
+            // Create notification with requiresConfirmation flag
+            const notification = await Notification.create({
+                recipient: recipientId,
+                type: 'MATCH_FOUND',
+                title,
+                message,
+                relatedId,
+                relatedModel,
+                image,
+                isGlobal: false,
+                requiresConfirmation: true,
+                matchData
+            });
 
-        // Send real-time notification if socket.io is available
-        if (global.io) {
-            sendNotificationToUser(global.io, recipientId, populatedNotification);
-        }
+            // console.log('Notification created:', notification._id.toString());
 
-        if (!notification) {
+            // Populate related data for real-time notification
+            const populatedNotification = await Notification.findById(notification._id)
+                .populate('relatedId', 'name photos');
+
+            // Send real-time notification if socket.io is available
+            if (global.io) {
+                // console.log('Sending real-time notification');
+                sendNotificationToUser(global.io, recipientId, populatedNotification);
+            } else {
+                // console.log('Socket.io not available, skipping real-time notification');
+            }
+
+            if (!notification) {
+                // console.log('Failed to create notification');
+                return ApiResponse.error(res, {
+                    statusCode: 500,
+                    message: 'Failed to create notification'
+                });
+            }
+
+            // console.log('Sending success response');
+            return ApiResponse.success(res, {
+                statusCode: 201,
+                message: 'Match alert sent successfully'
+            });
+        } catch (notificationError) {
+            console.error('Error creating notification:', notificationError);
             return ApiResponse.error(res, {
                 statusCode: 500,
-                message: 'Failed to create notification'
+                message: 'Failed to create notification',
+                error: notificationError.message
             });
         }
-
-        return ApiResponse.success(res, {
-            statusCode: 201,
-            message: 'Match alert sent successfully'
-        });
     } catch (error) {
         console.error('Send match alert error:', error);
         return ApiResponse.error(res, {

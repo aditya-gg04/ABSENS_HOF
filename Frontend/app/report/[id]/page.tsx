@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertTriangle, MapPin, Calendar, X, Maximize2, ArrowLeft, Search, User, Bell } from "lucide-react";
+import { AlertTriangle, MapPin, Calendar, X, Maximize2, ArrowLeft, Search, User, Bell, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { sendMatchAlert } from "@/services/notification.service";
 import { useToast } from "@/hooks/use-toast";
+import { RootState } from "@/lib/store";
 
 interface User {
   _id: string;
@@ -337,8 +339,66 @@ const MatchingResult = ({ result }: { result: any | null }) => {
   const [selectedMatchImage, setSelectedMatchImage] = useState<string | null>(null);
   const [showAlertDialog, setShowAlertDialog] = useState(false);
   const [isSendingAlert, setIsSendingAlert] = useState(false);
+  const [isOwnListing, setIsOwnListing] = useState(false);
   const { toast } = useToast();
   const { id: reportId } = useParams();
+  const { user } = useSelector((state: RootState) => state.auth);
+  const [report, setReport] = useState<any>(null);
+
+  // Fetch the report details to check ownership
+  useEffect(() => {
+    const fetchReport = async () => {
+      if (!reportId) return;
+
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const response = await fetch(`${API_URL}/sightings/${reportId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setReport(data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching report:", error);
+      }
+    };
+
+    fetchReport();
+  }, [reportId]);
+
+  useEffect(() => {
+    if (result && user) {
+      // Check if the result belongs to the current user
+      let reporterId;
+
+      if (result.reportedBy) {
+        reporterId = typeof result.reportedBy === 'object'
+          ? result.reportedBy._id
+          : result.reportedBy;
+      }
+
+      // In the report page, we need to check if the current user is the one who created the report
+      const reportOwner = typeof report?.reportedBy === 'object'
+        ? report?.reportedBy?._id
+        : report?.reportedBy;
+
+      // The user can't send an alert if they own either the report or the result
+      const isOwn = reporterId === user.id || reportOwner === user.id;
+
+      console.log("Checking if own listing:", {
+        reporterId,
+        reportOwner,
+        userId: user.id,
+        isOwn
+      });
+
+      setIsOwnListing(isOwn);
+    }
+  }, [result, user, report]);
 
   if (!result) {
     return <p className="text-center text-gray-500">No matching result found.</p>;
@@ -347,21 +407,30 @@ const MatchingResult = ({ result }: { result: any | null }) => {
   const handleSendAlert = async () => {
     if (!reportId || !result._id) return;
 
+    console.log("Sending alert from report page with IDs:", {
+      reportId: reportId as string,
+      resultId: result._id,
+      reportedBy: result.reportedBy ? result.reportedBy._id || result.reportedBy : "unknown"
+    });
+
     setIsSendingAlert(true);
     try {
-      const success = await sendMatchAlert(result._id, reportId as string);
+      // For report page, we need to send the missing person ID first, then the sighting report ID
+      // This is because we want to send an alert to the user who created the missing person listing
+      const response = await sendMatchAlert(result._id, reportId as string);
 
-      if (success) {
+      if (response.success) {
         toast({
           title: "Alert sent successfully",
-          description: "The alert has been sent to the profile.",
+          description: "The alert has been sent to the user who listed this missing person. They will be notified to confirm the match.",
           variant: "default",
         });
         setShowAlertDialog(false);
       } else {
+        console.error("Failed to send alert:", response);
         toast({
           title: "Failed to send alert",
-          description: "There was an error sending the alert. Please try again.",
+          description: response.message || "There was an error sending the alert. Please try again.",
           variant: "destructive",
         });
       }
@@ -417,14 +486,21 @@ const MatchingResult = ({ result }: { result: any | null }) => {
               </div>
 
               {/* Send Alert Button */}
-              <Button
-                onClick={() => setShowAlertDialog(true)}
-                className="w-full flex items-center justify-center gap-2"
-                variant="secondary"
-              >
-                <Bell className="h-4 w-4" />
-                <span>Send Alert</span>
-              </Button>
+              {isOwnListing ? (
+                <div className="w-full p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-700 text-sm flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>Cannot send alert to your own listing</span>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => setShowAlertDialog(true)}
+                  className="w-full flex items-center justify-center gap-2"
+                  variant="secondary"
+                >
+                  <Bell className="h-4 w-4" />
+                  <span>Send Alert</span>
+                </Button>
+              )}
             </div>
             <div>
               {result.photos && result.photos.length > 0 ? (
@@ -499,7 +575,7 @@ const MatchingResult = ({ result }: { result: any | null }) => {
         <DialogContent className="sm:max-w-md">
           <DialogTitle>Send Alert</DialogTitle>
           <DialogDescription>
-            Are you sure you want to send an alert for this match? This will notify relevant parties about the potential match.
+            Are you sure you want to send an alert for this match? This will notify the user who listed this missing person about the potential match. They will need to confirm the match.
           </DialogDescription>
           <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-end">
             <Button variant="outline" onClick={() => setShowAlertDialog(false)}>
