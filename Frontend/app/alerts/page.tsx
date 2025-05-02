@@ -80,11 +80,33 @@ export default function AlertsPage() {
       handleMarkAsRead([notification._id]);
     }
 
+    // Log notification for debugging
+    console.log("Notification clicked in alerts page:", notification);
+
     // Navigate to the appropriate page with the specific ID
-    if (notification.relatedModel === "MissingPerson" && notification.relatedId) {
-      router.push(`/missing/${notification.relatedId}`);
+    if (notification.type === 'MATCH_FOUND' && notification.matchData) {
+      // For match notifications, redirect to the user's own listing that was matched
+      if (notification.matchData.missingPersonId) {
+        router.push(`/missing/${notification.matchData.missingPersonId}`);
+      } else if (notification.matchData.sightingReportId) {
+        router.push(`/report/${notification.matchData.sightingReportId}`);
+      }
+    } else if (notification.relatedModel === "MissingPerson" && notification.relatedId) {
+      // Handle the case where relatedId might be an object with _id property or a string
+      let missingPersonId = notification.relatedId;
+      if (typeof notification.relatedId === 'object' && notification.relatedId !== null) {
+        // @ts-ignore - We're checking at runtime if _id exists
+        missingPersonId = notification.relatedId._id || notification.relatedId;
+      }
+      router.push(`/missing/${missingPersonId}`);
     } else if (notification.relatedModel === "SightingReport" && notification.relatedId) {
-      router.push(`/report/${notification.relatedId}`);
+      // Handle the case where relatedId might be an object with _id property or a string
+      let reportId = notification.relatedId;
+      if (typeof notification.relatedId === 'object' && notification.relatedId !== null) {
+        // @ts-ignore - We're checking at runtime if _id exists
+        reportId = notification.relatedId._id || notification.relatedId;
+      }
+      router.push(`/report/${reportId}`);
     } else if (notification.type === "STATUS_UPDATE") {
       // For status updates, go to the dashboard resolved cases tab
       router.push(`/dashboard?tab=resolved`);

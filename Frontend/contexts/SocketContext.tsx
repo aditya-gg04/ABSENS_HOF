@@ -65,7 +65,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
     // Handle notifications
     socketInstance.on("notification:new", (notification) => {
       console.log("New notification received:", notification);
-      
+
       // Show toast notification
       toast(notification.title, {
         description: notification.message,
@@ -73,10 +73,31 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
           label: "View",
           onClick: () => {
             // Navigate to the appropriate page based on notification type
-            if (notification.relatedModel === "MissingPerson") {
-              window.location.href = `/missing/${notification.relatedId}`;
-            } else if (notification.relatedModel === "SightingReport") {
-              window.location.href = `/report/${notification.relatedId}`;
+            if (notification.type === 'MATCH_FOUND' && notification.matchData) {
+              // For match notifications, redirect to the user's own listing that was matched
+              if (notification.matchData.missingPersonId) {
+                window.location.href = `/missing/${notification.matchData.missingPersonId}`;
+              } else if (notification.matchData.sightingReportId) {
+                window.location.href = `/report/${notification.matchData.sightingReportId}`;
+              } else {
+                window.location.href = "/alerts";
+              }
+            } else if (notification.relatedModel === "MissingPerson" && notification.relatedId) {
+              // Handle the case where relatedId might be an object with _id property or a string
+              let missingPersonId = notification.relatedId;
+              if (typeof notification.relatedId === 'object' && notification.relatedId !== null) {
+                // @ts-ignore - We're checking at runtime if _id exists
+                missingPersonId = notification.relatedId._id || notification.relatedId;
+              }
+              window.location.href = `/missing/${missingPersonId}`;
+            } else if (notification.relatedModel === "SightingReport" && notification.relatedId) {
+              // Handle the case where relatedId might be an object with _id property or a string
+              let reportId = notification.relatedId;
+              if (typeof notification.relatedId === 'object' && notification.relatedId !== null) {
+                // @ts-ignore - We're checking at runtime if _id exists
+                reportId = notification.relatedId._id || notification.relatedId;
+              }
+              window.location.href = `/report/${reportId}`;
             } else {
               window.location.href = "/alerts";
             }
@@ -87,7 +108,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
     socketInstance.on("notification:global", (notification) => {
       console.log("Global notification received:", notification);
-      
+
       // Show toast notification
       toast(notification.title, {
         description: notification.message,
@@ -95,10 +116,31 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
           label: "View",
           onClick: () => {
             // Navigate to the appropriate page based on notification type
-            if (notification.relatedModel === "MissingPerson") {
-              window.location.href = `/missing/${notification.relatedId}`;
-            } else if (notification.relatedModel === "SightingReport") {
-              window.location.href = `/report/${notification.relatedId}`;
+            if (notification.type === 'MATCH_FOUND' && notification.matchData) {
+              // For match notifications, redirect to the user's own listing that was matched
+              if (notification.matchData.missingPersonId) {
+                window.location.href = `/missing/${notification.matchData.missingPersonId}`;
+              } else if (notification.matchData.sightingReportId) {
+                window.location.href = `/report/${notification.matchData.sightingReportId}`;
+              } else {
+                window.location.href = "/alerts";
+              }
+            } else if (notification.relatedModel === "MissingPerson" && notification.relatedId) {
+              // Handle the case where relatedId might be an object with _id property or a string
+              let missingPersonId = notification.relatedId;
+              if (typeof notification.relatedId === 'object' && notification.relatedId !== null) {
+                // @ts-ignore - We're checking at runtime if _id exists
+                missingPersonId = notification.relatedId._id || notification.relatedId;
+              }
+              window.location.href = `/missing/${missingPersonId}`;
+            } else if (notification.relatedModel === "SightingReport" && notification.relatedId) {
+              // Handle the case where relatedId might be an object with _id property or a string
+              let reportId = notification.relatedId;
+              if (typeof notification.relatedId === 'object' && notification.relatedId !== null) {
+                // @ts-ignore - We're checking at runtime if _id exists
+                reportId = notification.relatedId._id || notification.relatedId;
+              }
+              window.location.href = `/report/${reportId}`;
             } else {
               window.location.href = "/alerts";
             }

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { RootState } from "@/lib/store";
 import { fetchNotifications, fetchUnreadCount, markNotificationsAsRead } from "@/services/notification.service";
 import { setNotifications, setUnreadCount, markNotificationsAsRead as markAsRead } from "@/lib/slices/dataSlice";
@@ -37,7 +38,7 @@ export default function NotificationBell() {
         setIsLoading(true);
         const count = await fetchUnreadCount();
         dispatch(setUnreadCount(count));
-        
+
         if (isOpen) {
           const { notifications: notifs } = await fetchNotifications(1, 10);
           dispatch(setNotifications(notifs));
@@ -75,12 +76,12 @@ export default function NotificationBell() {
   // Mark notifications as read when popover is opened
   const handleOpenChange = async (open: boolean) => {
     setIsOpen(open);
-    
+
     if (open && unreadCount > 0 && notifications.length > 0) {
       const unreadIds = notifications
         .filter(notification => !notification.isRead)
         .map(notification => notification._id);
-      
+
       if (unreadIds.length > 0) {
         try {
           await markNotificationsAsRead(unreadIds);
@@ -99,12 +100,43 @@ export default function NotificationBell() {
 
   const handleNotificationClick = (notification: any) => {
     setIsOpen(false);
-    
-    if (notification.relatedModel === "MissingPerson") {
-      router.push(`/missing/${notification.relatedId}`);
-    } else if (notification.relatedModel === "SightingReport") {
-      router.push(`/report/${notification.relatedId}`);
+
+    // Log notification for debugging
+    console.log("Notification clicked:", notification);
+
+    // Handle different notification types
+    if (notification.type === 'MATCH_FOUND') {
+      // For match notifications, redirect to the user's own listing that was matched
+      if (notification.matchData && typeof notification.matchData === 'object' && notification.matchData.missingPersonId) {
+        // If this is a match for a missing person listing created by the user
+        router.push(`/missing/${notification.matchData.missingPersonId}`);
+      } else if (notification.matchData && typeof notification.matchData === 'object' && notification.matchData.sightingReportId) {
+        // If this is a match for a sighting report created by the user
+        router.push(`/report/${notification.matchData.sightingReportId}`);
+      } else {
+        // Fallback to alerts page if no specific listing is found
+        router.push("/alerts");
+      }
+    } else if (notification.relatedModel === "MissingPerson" && notification.relatedId) {
+      // For notifications related to a missing person listing
+      // Handle the case where relatedId might be an object with _id property or a string
+      let missingPersonId = notification.relatedId;
+      if (typeof notification.relatedId === 'object' && notification.relatedId !== null) {
+        // @ts-ignore - We're checking at runtime if _id exists
+        missingPersonId = notification.relatedId._id || notification.relatedId;
+      }
+      router.push(`/missing/${missingPersonId}`);
+    } else if (notification.relatedModel === "SightingReport" && notification.relatedId) {
+      // For notifications related to a sighting report
+      // Handle the case where relatedId might be an object with _id property or a string
+      let reportId = notification.relatedId;
+      if (typeof notification.relatedId === 'object' && notification.relatedId !== null) {
+        // @ts-ignore - We're checking at runtime if _id exists
+        reportId = notification.relatedId._id || notification.relatedId;
+      }
+      router.push(`/report/${reportId}`);
     } else {
+      // For all other notifications, redirect to the alerts page
       router.push("/alerts");
     }
   };
@@ -159,11 +191,13 @@ export default function NotificationBell() {
                 >
                   <div className="flex items-start gap-3">
                     {notification.image ? (
-                      <div className="h-10 w-10 rounded-full overflow-hidden flex-shrink-0">
-                        <img
+                      <div className="h-10 w-10 rounded-full overflow-hidden flex-shrink-0 relative">
+                        <Image
                           src={notification.image}
-                          alt=""
-                          className="h-full w-full object-cover"
+                          alt="Notification image"
+                          fill
+                          sizes="40px"
+                          className="object-cover"
                         />
                       </div>
                     ) : (
