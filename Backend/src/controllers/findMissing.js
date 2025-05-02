@@ -125,7 +125,8 @@ export const getMissingPersonsByUserId = async (req, res) => {
 
 export const getMissingPersonById = async (req, res) => {
     try {
-        const person = await MissingPerson.findById(req.params.id);
+        const person = await MissingPerson.findById(req.params.id)
+            .populate('reportedBy', 'username fullname');
 
         if (!person) {
             return ApiResponse.error(res, {statusCode: 404,message: 'Missing person not found'});

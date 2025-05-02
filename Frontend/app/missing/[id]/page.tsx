@@ -12,6 +12,12 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { sendMatchAlert } from "@/services/notification.service";
 import { useToast } from "@/hooks/use-toast";
 
+interface User {
+  _id: string;
+  username: string;
+  fullname?: string;
+}
+
 interface MissingPerson {
   _id: string;
   name: string;
@@ -21,6 +27,7 @@ interface MissingPerson {
   missingDate: string;
   description: string;
   photos: string[];
+  reportedBy?: User | string;
 }
 
 export default function MissingPersonDetailPage() {
@@ -74,6 +81,11 @@ export default function MissingPersonDetailPage() {
       person.photos.forEach((photoUrl: string) => {
         formData.append("image_urls", photoUrl);
       });
+
+      // Add reporter_id to filter out own listings
+      if (person.reportedBy) {
+        formData.append("reporter_id", person.reportedBy.toString());
+      }
 
       const FIND_MISSING_API_URL = process.env.NEXT_PUBLIC_IMAGE_RECOGNITION_URL;
       const response: Response = await fetch(
@@ -383,12 +395,20 @@ const MatchingResult = ({ result }: { result: any | null }) => {
                   <MapPin className="h-4 w-4 flex-shrink-0" />
                   <span className="flex-grow break-words">Location: {result.location}</span>
                 </p>
-                <p className="text-sm sm:text-base text-muted-foreground flex items-center gap-2">
+                <p className="text-sm sm:text-base text-muted-foreground flex items-center gap-2 mb-2">
                   <Calendar className="h-4 w-4 flex-shrink-0" />
                   <span className="flex-grow">
                     Reported on: {new Date(result.createdAt).toLocaleDateString()}
                   </span>
                 </p>
+                {result.reportedBy && (
+                  <p className="text-sm sm:text-base text-muted-foreground flex items-center gap-2">
+                    <User className="h-4 w-4 flex-shrink-0" />
+                    <span className="flex-grow">
+                      Reported by: {result.reportedBy.username || result.reportedBy.fullname || "Anonymous"}
+                    </span>
+                  </p>
+                )}
               </div>
               <div className="p-4 bg-gray-50 rounded-lg">
                 <h4 className="font-medium mb-2 text-sm sm:text-base">Description</h4>

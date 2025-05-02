@@ -11,6 +11,12 @@ import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription, Dia
 import { sendMatchAlert } from "@/services/notification.service";
 import { useToast } from "@/hooks/use-toast";
 
+interface User {
+  _id: string;
+  username: string;
+  fullname?: string;
+}
+
 interface ReportedCase {
   _id: string;
   name: string;
@@ -18,6 +24,7 @@ interface ReportedCase {
   createdAt: string;
   description: string;
   photos?: string[];
+  reportedBy?: User | string;
 }
 
 export default function ReportDetailPage() {
@@ -70,6 +77,11 @@ export default function ReportDetailPage() {
       person.photos?.forEach((photoUrl: string) => {
         formData.append("image_urls", photoUrl);
       });
+
+      // Add reporter_id to filter out own listings
+      if (person.reportedBy) {
+        formData.append("reporter_id", person.reportedBy.toString());
+      }
 
       const FIND_MISSING_API_URL = process.env.NEXT_PUBLIC_IMAGE_RECOGNITION_URL;
       const response: Response = await fetch(
@@ -389,6 +401,14 @@ const MatchingResult = ({ result }: { result: any | null }) => {
                       Missing since: {new Date(result.missingDate).toLocaleDateString()}
                     </span>
                   </p>
+                  {result.reportedBy && (
+                    <p className="text-sm sm:text-base text-muted-foreground flex items-center gap-2">
+                      <User className="h-4 w-4 flex-shrink-0" />
+                      <span className="flex-grow">
+                        Listed by: {result.reportedBy.username || result.reportedBy.fullname || "Anonymous"}
+                      </span>
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="p-4 bg-gray-50 rounded-lg">

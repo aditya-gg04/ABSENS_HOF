@@ -29,6 +29,7 @@ export default function Navbar() {
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   // Use the global auth state instead of local state.
@@ -52,8 +53,10 @@ export default function Navbar() {
   // Handle logout by calling the backend logout API and then dispatching the logout action
   const handleLogout = async () => {
     try {
+      setIsLoggingOut(true);
+
       // Call the backend logout API
-      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/user/logout`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/user/logout`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("accessToken")}`,
@@ -62,15 +65,20 @@ export default function Navbar() {
         credentials: "include"
       });
 
+      if (!response.ok) {
+        console.warn("Backend logout failed with status:", response.status);
+      }
+
       // Dispatch logout action regardless of API response
       dispatch(logout());
       router.push("/");
-      setShowLogoutDialog(false);
     } catch (error) {
       console.error("Error during logout:", error);
       // Still logout from frontend even if backend call fails
       dispatch(logout());
       router.push("/");
+    } finally {
+      setIsLoggingOut(false);
       setShowLogoutDialog(false);
     }
   };
@@ -153,9 +161,19 @@ export default function Navbar() {
                     setOpen(false);
                     openLogoutDialog();
                   }}
+                  disabled={isLoggingOut}
                 >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
+                  {isLoggingOut ? (
+                    <div className="flex items-center gap-2">
+                      <Loader size="sm" />
+                      <span>Logging out...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </>
+                  )}
                 </Button>
               )}
             </nav>
@@ -198,13 +216,30 @@ export default function Navbar() {
                 size="sm"
                 className="text-xs sm:text-sm"
                 onClick={openLogoutDialog}
+                disabled={isLoggingOut}
               >
-                <LogOut className="h-4 w-4 mr-1" />
-                Logout
+                {isLoggingOut ? (
+                  <div className="flex items-center gap-2">
+                    <Loader size="sm" />
+                    <span>Logging out...</span>
+                  </div>
+                ) : (
+                  <>
+                    <LogOut className="h-4 w-4 mr-1" />
+                    Logout
+                  </>
+                )}
               </Button>
 
               {/* Logout Confirmation Dialog */}
-              <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+              <AlertDialog
+                open={showLogoutDialog}
+                onOpenChange={(open) => {
+                  // Prevent closing the dialog while logging out
+                  if (!isLoggingOut) {
+                    setShowLogoutDialog(open);
+                  }
+                }}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you sure you want to logout?</AlertDialogTitle>
@@ -213,12 +248,20 @@ export default function Navbar() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel disabled={isLoggingOut}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleLogout}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={isLoggingOut}
                     >
-                      Logout
+                      {isLoggingOut ? (
+                        <div className="flex items-center gap-2">
+                          <Loader size="sm" className="text-white" />
+                          <span>Logging out...</span>
+                        </div>
+                      ) : (
+                        "Logout"
+                      )}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

@@ -365,35 +365,48 @@ const refreshToken = asyncHandler(async (req, res) => {
 
 
 const logOutUser = asyncHandler(async (req, res) => {
-    // console.log(req.user);
-    if (!req.user) {
-        throw new ApiError(401, 'Unauthorized');
-    }
-    await User.findByIdAndUpdate(
-        req.user._id,
-        {
-            $set: {
-                refreshToken: '',
+    try {
+        // Check if user is authenticated
+        if (!req.user) {
+            throw new ApiError(401, 'Unauthorized');
+        }
+
+        // Clear refresh token in database
+        await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $set: {
+                    refreshToken: '',
+                },
             },
-        },
-        {
-            new: true,
-            select: '-password ',
-        },
-    );
+            {
+                new: true,
+                select: '-password',
+            },
+        );
 
-    const options = {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'None', // Use the same setting as when setting the cookies
-        path: '/', // Default is '/' if not explicitly set
-    };
+        // Cookie options for clearing cookies
+        const options = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+            path: '/',
+        };
 
-    return res
-        .status(200)
-        .clearCookie('accessToken', options)
-        .clearCookie('refreshToken', options)
-        .json(new ApiResponse(200, {}, 'User logged out successfully'));
+        // Clear cookies and send success response
+        return res
+            .status(200)
+            .clearCookie('accessToken', options)
+            .clearCookie('refreshToken', options)
+            .json(new ApiResponse(200, {}, 'User logged out successfully'));
+    } catch (error) {
+        console.error('Logout error:', error);
+        return ApiResponse.error(res, {
+            statusCode: error.statusCode || 500,
+            message: 'Error during logout',
+            error: error.message
+        });
+    }
 });
 
 const updateUserProfile = asyncHandler(async (req, res) => {

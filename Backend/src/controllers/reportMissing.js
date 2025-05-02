@@ -112,7 +112,8 @@ export const getSightingReportById = async (req, res) => {
             });
         }
 
-        const report = await SightingReport.findById(reportId);
+        const report = await SightingReport.findById(reportId)
+            .populate('reportedBy', 'username fullname');
 
         if (!report) {
             return ApiResponse.error(res, {

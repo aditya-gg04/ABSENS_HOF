@@ -29,6 +29,7 @@ interface MissingPerson {
   missingDate: string
   lastSeenLocation: string
   photos: string[]
+  reportedBy?: string
 }
 
 interface SearchParams {
@@ -106,6 +107,11 @@ export default function ReportPage() {
       person.photos.forEach((photoUrl: string) => {
         formData.append("image_urls", photoUrl)
       })
+
+      // Add reporter_id to identify who reported this sighting
+      if (person.reportedBy) {
+        formData.append("reporter_id", person.reportedBy.toString())
+      }
 
       const FIND_MISSING_API_URL = process.env.NEXT_PUBLIC_IMAGE_RECOGNITION_URL
 

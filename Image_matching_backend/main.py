@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Form, UploadFile
 from typing import List
 import uvicorn
-import numpy as np  
+import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
 from embedder import generate_embeddings
 import uuid
@@ -55,31 +55,44 @@ async def process_images(user_id: str, image_urls: List[str]):
         try:
             response = requests.get(url)
             response.raise_for_status()
-            
+
             image_filename = f"{user_id}_{uuid.uuid4()}.jpg"
             upload_file = UploadFile(filename=image_filename, file=BytesIO(response.content))
-            
+
             embedding = await generate_embeddings(upload_file)
             if embedding is not None:
                 embeddings.append(embedding)
-                
+
         except Exception as e:
             print(f"Error processing image from URL {url}: {e}")
             continue
-    
+
     if not embeddings:
         return None
-        
+
     final_embedding = np.mean(embeddings, axis=0)
     return [float(x) for x in final_embedding]
 
-async def search_embeddings(vector, namespace: str):
+async def search_embeddings(vector, namespace: str, reporter_id: str = None):
     """Common function to search embeddings in Pinecone"""
     try:
-        query_response = index.query(vector=vector, top_k=1, namespace=namespace, include_metadata=True)
+        query_response = index.query(vector=vector, top_k=5, namespace=namespace, include_metadata=True)
         matches = query_response["matches"]
-        
-        if matches and matches[0]["score"] > 0.8:
+
+        # Filter out matches from the same user if reporter_id is provided
+        if reporter_id:
+            filtered_matches = []
+            for match in matches:
+                match_metadata = match.get("metadata", {})
+                match_reporter_id = match_metadata.get("reporter_id")
+
+                # Only include matches where reporter_id is different or not present
+                if not match_reporter_id or match_reporter_id != reporter_id:
+                    filtered_matches.append(match)
+
+            matches = filtered_matches
+
+        if matches and len(matches) > 0 and matches[0]["score"] > 0.8:
             match_data = [{
                 "id": match["id"],
                 "score": float(match["score"]),
@@ -91,7 +104,7 @@ async def search_embeddings(vector, namespace: str):
                 "match": match_data
             }
         return {"message": "No matches found", "success": False}
-        
+
     except Exception as e:
         print(f"Error searching embedding: {e}")
         return {"error": str(e)}
@@ -101,42 +114,48 @@ async def root():
     return {"message": "Hello World"}
 
 @app.post("/save-find-missing")
-async def save_find_missing(user_id: str = Form(...), image_urls: List[str] = Form(...)):
+async def save_find_missing(user_id: str = Form(...), image_urls: List[str] = Form(...), reporter_id: str = Form(None)):
     """Stores image of person in find namespace"""
     final_embedding_list = await process_images(user_id, image_urls)
     if not final_embedding_list:
         return {"error": "No valid faces detected in any of the provided images"}
-        
-    index.upsert([(user_id, final_embedding_list)], namespace="find")
+
+    # Include reporter_id in metadata if provided
+    metadata = {"reporter_id": reporter_id} if reporter_id else {}
+
+    index.upsert([(user_id, final_embedding_list, metadata)], namespace="find")
     return {"success": True, "message": "Finding person embeddings saved successfully"}
 
 @app.post("/save-report-missing")
-async def save_report_missing(user_id: str = Form(...), image_urls: List[str] = Form(...)):
+async def save_report_missing(user_id: str = Form(...), image_urls: List[str] = Form(...), reporter_id: str = Form(None)):
     """Stores image of person in report namespace"""
     final_embedding_list = await process_images(user_id, image_urls)
     if not final_embedding_list:
         return {"error": "No valid faces detected in any of the provided images"}
-        
-    index.upsert([(user_id, final_embedding_list)], namespace="report")
-    return {"success": True, "message": "Finding person embeddings saved successfully"}
+
+    # Include reporter_id in metadata if provided
+    metadata = {"reporter_id": reporter_id} if reporter_id else {}
+
+    index.upsert([(user_id, final_embedding_list, metadata)], namespace="report")
+    return {"success": True, "message": "Report missing person embeddings saved successfully"}
 
 @app.post("/search-find-missing")
-async def search_find_missing(user_id: str = Form(...), image_urls: List[str] = Form(...)):
+async def search_find_missing(user_id: str = Form(...), image_urls: List[str] = Form(...), reporter_id: str = Form(None)):
     """Search for person in report namespace"""
     final_embedding_list = await process_images(user_id, image_urls)
     if not final_embedding_list:
         return {"error": "No valid faces detected in any of the provided images"}
-        
-    return await search_embeddings(final_embedding_list, "report")
+
+    return await search_embeddings(final_embedding_list, "report", reporter_id)
 
 @app.post("/search-report-missing")
-async def search_report_missing(user_id: str = Form(...), image_urls: List[str] = Form(...)):
+async def search_report_missing(user_id: str = Form(...), image_urls: List[str] = Form(...), reporter_id: str = Form(None)):
     """Search for person in find namespace"""
     final_embedding_list = await process_images(user_id, image_urls)
     if not final_embedding_list:
         return {"error": "No valid faces detected in any of the provided images"}
-        
-    return await search_embeddings(final_embedding_list, "find")
+
+    return await search_embeddings(final_embedding_list, "find", reporter_id)
 
 @app.get("/list-embeddings")
 async def list_embeddings():
@@ -145,18 +164,18 @@ async def list_embeddings():
         print("Listing embeddings")
         reported_stats = index.describe_index_stats()
         namespaces = reported_stats.namespaces
-        
+
         vector_counts = {
             "reported": namespaces.get("reported", {}).get("vector_count", 0),
             "unconfirmed": namespaces.get("unconfirmed", {}).get("vector_count", 0)
-        } 
-      
+        }
+
         return {
             "total_vectors": sum(vector_counts.values()),
             "vectors_by_namespace": vector_counts,
         }
     except Exception as e:
-        return {"error": str(e)}    
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
