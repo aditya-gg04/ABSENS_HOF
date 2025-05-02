@@ -11,6 +11,7 @@ import Image from "next/image";
 import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { sendMatchAlert } from "@/services/notification.service";
 import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { RootState } from "@/lib/store";
 import { Slider } from "@/components/ui/slider";
 
@@ -59,10 +60,16 @@ export default function ReportDetailPage() {
             const data = await response.json();
             setReport(data.data);
           } else {
-            console.error("Failed to fetch report");
+            // console.error("Failed to fetch report");
+            toast.error("Error", {
+              description: "Failed to fetch report details. Please try again."
+            });
           }
         } catch (error) {
-          console.error("Error fetching report:", error);
+          // console.error("Error fetching report:", error);
+          toast.error("Error", {
+            description: "An error occurred while fetching report details."
+          });
         } finally {
           setLoading(false);
         }
@@ -100,6 +107,9 @@ export default function ReportDetailPage() {
       );
 
       if (!response.ok) {
+        toast.error("Search Failed", {
+          description: "Failed to send image data to search API. Please try again."
+        });
         throw new Error("Failed to send image URLs to API");
       }
 
@@ -107,11 +117,17 @@ export default function ReportDetailPage() {
 
       if (responseData.success === false) {
         // No matches found
+        toast.info("No Matches Found", {
+          description: "No matching results were found. Try adjusting the threshold or check back later."
+        });
         return;
       }
 
       // Check if we have any matches
       if (!responseData.match || responseData.match.length === 0) {
+        toast.info("No Matches Found", {
+          description: "No matching results were found. Try adjusting the threshold or check back later."
+        });
         setMatchingResults([]);
         return;
       }
@@ -145,9 +161,15 @@ export default function ReportDetailPage() {
       setMatchingResults(validResults);
     } catch (error: unknown) {
       if (error instanceof Error) {
-        console.error("Error in handleSearchMatches:", error.message);
+        // console.error("Error in handleSearchMatches:", error.message);
+        toast.error("Search Error", {
+          description: `Error searching for matches: ${error.message}`
+        });
       } else {
-        console.error("Unknown error in handleSearchMatches");
+        // console.error("Unknown error in handleSearchMatches");
+        toast.error("Search Error", {
+          description: "An unknown error occurred while searching for matches."
+        });
       }
     } finally {
       setIsSearching(false);
@@ -440,7 +462,7 @@ const AlertConfirmationDialog = ({
       <DialogContent className="sm:max-w-md">
         <DialogTitle>Send Alert</DialogTitle>
         <DialogDescription>
-          Are you sure you want to send an alert for this match? This will notify the user who listed this person about the potential match. They will need to confirm the match.
+          Are you sure you want to send an alert for this match? This will notify the user who listed this missing person about the potential match with your sighting report. They will need to confirm the match.
         </DialogDescription>
         <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-end">
           <Button variant="outline" onClick={() => setOpen(false)}>
@@ -474,7 +496,7 @@ const MatchingResult = ({ result }: { result: any | null }) => {
   const [showAlertDialog, setShowAlertDialog] = useState(false);
   const [isSendingAlert, setIsSendingAlert] = useState(false);
   const [isOwnListing, setIsOwnListing] = useState(false);
-  const { toast } = useToast();
+  const [resultOwnerId, setResultOwnerId] = useState<string | null>(null);
   const { id: reportId } = useParams();
   const { user } = useSelector((state: RootState) => state.auth);
   const [report, setReport] = useState<any>(null);
@@ -497,42 +519,51 @@ const MatchingResult = ({ result }: { result: any | null }) => {
           setReport(data.data);
         }
       } catch (error) {
-        console.error("Error fetching report:", error);
+        // console.error("Error fetching report:", error);
+        toast.error("Error", {
+          description: "Failed to fetch report details for ownership check."
+        });
       }
     };
 
     fetchReport();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportId]);
 
   useEffect(() => {
     if (result && user) {
       // Check if the result belongs to the current user
-      let reporterId;
+      let ownerIdValue = null;
 
       if (result.reportedBy) {
-        reporterId = typeof result.reportedBy === 'object'
+        ownerIdValue = typeof result.reportedBy === 'object'
           ? result.reportedBy._id
           : result.reportedBy;
       }
+
+      // Set the resultOwnerId state
+      setResultOwnerId(ownerIdValue);
 
       // In the report page, we need to check if the current user is the one who created the report
       const reportOwner = typeof report?.reportedBy === 'object'
         ? report?.reportedBy?._id
         : report?.reportedBy;
 
-      // The user can't send an alert if they own either the report or the result
-      const isOwn = reporterId === user.id || reportOwner === user.id;
+      // The user can't send an alert if they own the missing person result
+      const isOwn = ownerIdValue === user.id;
 
       // Also check if the reporter of the result is the same as the reporter of the report
-      const isSameReporter = reporterId && reportOwner && reporterId === reportOwner;
+      const isSameReporter = ownerIdValue && reportOwner && ownerIdValue === reportOwner;
 
-      console.log("Checking if own listing:", {
-        reporterId,
-        reportOwner,
-        userId: user.id,
-        isOwn,
-        isSameReporter
-      });
+      // For debugging purposes
+      // console.log("Ownership check in report/[id] page:", {
+      //   resultOwnerId: ownerIdValue,
+      //   reportOwner,
+      //   userId: user.id,
+      //   isOwn,
+      //   isSameReporter,
+      //   isOwnListing: isOwn || isSameReporter
+      // });
 
       // Set isOwnListing to true if either condition is met
       setIsOwnListing(isOwn || isSameReporter);
@@ -546,39 +577,33 @@ const MatchingResult = ({ result }: { result: any | null }) => {
   const handleSendAlert = async () => {
     if (!reportId || !result._id) return;
 
-    console.log("Sending alert from report page with IDs:", {
-      reportId: reportId as string,
-      resultId: result._id,
-      reportedBy: result.reportedBy ? result.reportedBy._id || result.reportedBy : "unknown"
-    });
+    // console.log("Sending alert from report page with IDs:", {
+    //   reportId: reportId as string,
+    //   resultId: result._id,
+    //   reportedBy: result.reportedBy ? result.reportedBy._id || result.reportedBy : "unknown"
+    // });
 
     setIsSendingAlert(true);
     try {
       // For report page, we need to send the missing person ID first, then the sighting report ID
-      // This is because we want to send an alert to the user who created the missing person listing
-      const response = await sendMatchAlert(result._id, reportId as string);
+      // We also pass 'report' as the source to indicate we're on the report page
+      const response = await sendMatchAlert(result._id, reportId as string, 'report');
 
       if (response.success) {
-        toast({
-          title: "Alert sent successfully",
-          description: "The alert has been sent to the user who listed this missing person. They will be notified to confirm the match.",
-          variant: "default",
+        toast.success("Alert Sent Successfully", {
+          description: "The alert has been sent to the user who listed this missing person. They will be notified to confirm the match."
         });
         setShowAlertDialog(false);
       } else {
-        console.error("Failed to send alert:", response);
-        toast({
-          title: "Failed to send alert",
-          description: response.message || "There was an error sending the alert. Please try again.",
-          variant: "destructive",
+        // console.error("Failed to send alert:", response);
+        toast.error("Failed to send alert", {
+          description: response.message || "There was an error sending the alert. Please try again."
         });
       }
     } catch (error) {
-      console.error("Error sending alert:", error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again later.",
-        variant: "destructive",
+      // console.error("Error sending alert:", error);
+      toast.error("Error", {
+        description: "An unexpected error occurred while sending the alert. Please try again later."
       });
     } finally {
       setIsSendingAlert(false);
@@ -627,7 +652,11 @@ const MatchingResult = ({ result }: { result: any | null }) => {
               {isOwnListing ? (
                 <div className="w-full p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-700 text-sm flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span className="break-words">Cannot send alert to your own listing</span>
+                  <span className="break-words">
+                    {resultOwnerId === user?.id
+                      ? "You cannot send an alert to your own missing person listing"
+                      : "Cannot send alert to your own listing"}
+                  </span>
                 </div>
               ) : (
                 <Button

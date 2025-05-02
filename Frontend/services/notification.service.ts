@@ -22,9 +22,17 @@ export const fetchNotifications = async (page = 1, limit = 10): Promise<{ notifi
   }
 };
 
-export const sendMatchAlert = async (missingPersonId: string, matchId: string): Promise<{ success: boolean, message?: string }> => {
+export const sendMatchAlert = async (id1: string, id2: string, source: 'missing' | 'report' = 'report'): Promise<{ success: boolean, message?: string }> => {
   try {
-    // console.log("Sending match alert with params:", { missingPersonId, matchId });
+    // console.log("Sending match alert with params:", { id1, id2, source });
+
+    // Determine which parameter is which based on the source
+    // For missing/[id] page: id1 is missingPersonId, id2 is matchId (sighting report)
+    // For report/[id] page: id1 is missingPersonId, id2 is matchId (sighting report)
+    // The parameters are now consistent between both pages
+    const payload = { missingPersonId: id1, matchId: id2, source };
+
+    // console.log("Sending payload to backend:", payload);
 
     const response = await fetch(`${API_URL}/notifications/match-alert`, {
       method: "POST",
@@ -32,10 +40,7 @@ export const sendMatchAlert = async (missingPersonId: string, matchId: string): 
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
       },
-      body: JSON.stringify({
-        missingPersonId,
-        matchId
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();

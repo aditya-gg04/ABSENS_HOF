@@ -65,7 +65,7 @@ export default function SignupPage() {
       });
 
       const data = await response.json();
-      console.log("Registration response:", data); // For debugging
+      // console.log("Registration response:", data); // For debugging
 
       if (data.success) {
         // Show success toast
@@ -114,7 +114,7 @@ export default function SignupPage() {
           type: ErrorType.UNKNOWN
         });
       }
-      console.error("Registration error:", err);
+      // console.error("Registration error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -143,7 +143,7 @@ export default function SignupPage() {
       });
 
       const data = await response.json();
-      console.log("Get OTP response:", data); // For debugging
+      // console.log("Get OTP response:", data); // For debugging
 
       if (data.success) {
         // Show success toast
@@ -179,7 +179,10 @@ export default function SignupPage() {
           type: ErrorType.UNKNOWN
         });
       }
-      console.error("OTP request error:", err);
+      // console.error("OTP request error:", err);
+      toast.error("OTP Request Error", {
+        description: "Failed to send OTP. Please try again later."
+      });
     } finally {
       setIsLoading(false);
     }
@@ -208,7 +211,7 @@ export default function SignupPage() {
       });
 
       const data = await response.json();
-      console.log("OTP verification response:", data); // For debugging
+      // console.log("OTP verification response:", data); // For debugging
 
       if (data.success) {
         setOtpVerified(true);
@@ -250,7 +253,10 @@ export default function SignupPage() {
           type: ErrorType.UNKNOWN
         });
       }
-      console.error("OTP verification error:", err);
+      // console.error("OTP verification error:", err);
+      toast.error("Verification Error", {
+        description: "Failed to verify OTP. Please try again."
+      });
       return false;
     } finally {
       setIsLoading(false);
@@ -304,6 +310,9 @@ export default function SignupPage() {
                 })
                 .catch(() => {
                   setIsLoading(false);
+                  toast.error("Connection Error", {
+                    description: "An error occurred while connecting to the server. Please try again."
+                  });
                   setError({
                     message: "An error occurred while connecting to the server. Please try again.",
                     type: ErrorType.UNKNOWN

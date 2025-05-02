@@ -429,12 +429,13 @@ export const confirmMatch = async (req, res) => {
 
 export const sendMatchAlert = async (req, res) => {
     try {
-        const { missingPersonId, matchId } = req.body;
+        const { missingPersonId, matchId, source } = req.body;
         const currentUserId = req.user.id; // Get the current user's ID
 
         // console.log('sendMatchAlert called with:', {
         //     missingPersonId,
         //     matchId,
+        //     source,
         //     currentUserId
         // });
 
@@ -446,12 +447,23 @@ export const sendMatchAlert = async (req, res) => {
             });
         }
 
+        // We no longer need to swap parameters since the frontend now sends them consistently
+        // missingPersonId is always the missing person ID
+        // matchId is always the sighting report ID or another missing person ID
+        let actualMissingPersonId = missingPersonId;
+        let actualMatchId = matchId;
+
+        // console.log('Using parameters:', { actualMissingPersonId, actualMatchId, source });
+
+        // Add additional logging for debugging
+        // console.log('Current user ID:', currentUserId);
+
         // Determine if this is a missing person to sighting report match or vice versa
         let missingPerson, sightingReport, recipientId, relatedModel, relatedId;
 
         // Try to find both as missing persons first
-        const missingPersonDoc = await MissingPerson.findById(missingPersonId);
-        const matchAsMissingPerson = await MissingPerson.findById(matchId);
+        const missingPersonDoc = await MissingPerson.findById(actualMissingPersonId);
+        const matchAsMissingPerson = await MissingPerson.findById(actualMatchId);
 
         // console.log('Document lookup results:', {
         //     missingPersonDoc: missingPersonDoc ? 'found' : 'not found',
@@ -463,7 +475,7 @@ export const sendMatchAlert = async (req, res) => {
             missingPerson = missingPersonDoc;
             recipientId = matchAsMissingPerson.reportedBy;
             relatedModel = 'MissingPerson';
-            relatedId = missingPersonId;
+            relatedId = actualMissingPersonId;
 
             // console.log('Both are missing persons:', {
             //     recipientId: recipientId ? recipientId.toString() : 'null',
@@ -480,7 +492,7 @@ export const sendMatchAlert = async (req, res) => {
             }
         } else {
             // Check if one is a missing person and one is a sighting report
-            const sightingReportDoc = await SightingReport.findById(matchId);
+            const sightingReportDoc = await SightingReport.findById(actualMatchId);
 
             // console.log('Sighting report lookup:', {
             //     sightingReportDoc: sightingReportDoc ? 'found' : 'not found'
@@ -491,10 +503,17 @@ export const sendMatchAlert = async (req, res) => {
                 missingPerson = missingPersonDoc;
                 sightingReport = sightingReportDoc;
 
-                // The recipient should be the user who created the missing person, not the sighting report
-                recipientId = missingPerson.reportedBy;
-                relatedModel = 'MissingPerson';
-                relatedId = missingPersonId;
+                if (source === 'missing') {
+                    // If we're on the missing/[id] page, the recipient should be the user who created the sighting report
+                    recipientId = sightingReport.reportedBy;
+                    relatedModel = 'SightingReport';
+                    relatedId = actualMatchId;
+                } else {
+                    // If we're on the report/[id] page, the recipient should be the user who created the missing person
+                    recipientId = missingPerson.reportedBy;
+                    relatedModel = 'MissingPerson';
+                    relatedId = actualMissingPersonId;
+                }
 
                 // console.log('Missing person to sighting report match:', {
                 //     recipientId: recipientId ? recipientId.toString() : 'null',
@@ -503,18 +522,30 @@ export const sendMatchAlert = async (req, res) => {
                 //     sightingReportReportedBy: sightingReport.reportedBy ? sightingReport.reportedBy.toString() : 'null'
                 // });
 
-                // Don't send alert if the recipient is the same as the current user
-                if (recipientId && recipientId.toString() === currentUserId) {
-                    // console.log('Cannot send alert to own listing (missing person to sighting)');
-                    return ApiResponse.error(res, {
-                        statusCode: 400,
-                        message: 'Cannot send alert to your own listing'
-                    });
+                // Check ownership based on the source page
+                if (source === 'missing') {
+                    // In the missing/[id] page, we need to check if the current user owns the sighting report
+                    if (sightingReport.reportedBy && sightingReport.reportedBy.toString() === currentUserId) {
+                        // console.log('Cannot send alert to own sighting report (missing/[id] page)');
+                        return ApiResponse.error(res, {
+                            statusCode: 400,
+                            message: 'Cannot send alert to your own sighting report'
+                        });
+                    }
+                } else {
+                    // In the report/[id] page, we need to check if the current user owns the missing person
+                    if (missingPerson.reportedBy && missingPerson.reportedBy.toString() === currentUserId) {
+                        // console.log('Cannot send alert to own missing person (report/[id] page)');
+                        return ApiResponse.error(res, {
+                            statusCode: 400,
+                            message: 'Cannot send alert to your own missing person listing'
+                        });
+                    }
                 }
             } else {
                 // Try the reverse
-                const missingPersonAsMatch = await MissingPerson.findById(matchId);
-                const sightingReportAsSource = await SightingReport.findById(missingPersonId);
+                const missingPersonAsMatch = await MissingPerson.findById(actualMatchId);
+                const sightingReportAsSource = await SightingReport.findById(actualMissingPersonId);
 
                 // console.log('Reverse lookup results:', {
                 //     missingPersonAsMatch: missingPersonAsMatch ? 'found' : 'not found',
@@ -527,20 +558,32 @@ export const sendMatchAlert = async (req, res) => {
                     sightingReport = sightingReportAsSource;
                     recipientId = missingPerson.reportedBy;
                     relatedModel = 'SightingReport';
-                    relatedId = missingPersonId;
+                    relatedId = actualMissingPersonId;
 
                     // console.log('Sighting report to missing person match:', {
                     //     recipientId: recipientId ? recipientId.toString() : 'null',
                     //     currentUserId
                     // });
 
-                    // Don't send alert if the recipient is the same as the current user
-                    if (recipientId && recipientId.toString() === currentUserId) {
-                        // console.log('Cannot send alert to own listing (sighting to missing person)');
-                        return ApiResponse.error(res, {
-                            statusCode: 400,
-                            message: 'Cannot send alert to your own listing'
-                        });
+                    // Check ownership based on the source page
+                    if (source === 'missing') {
+                        // In the missing/[id] page, we need to check if the current user owns the missing person
+                        if (missingPerson.reportedBy && missingPerson.reportedBy.toString() === currentUserId) {
+                            // console.log('Cannot send alert to own missing person (missing/[id] page, reverse case)');
+                            return ApiResponse.error(res, {
+                                statusCode: 400,
+                                message: 'Cannot send alert to your own missing person listing'
+                            });
+                        }
+                    } else {
+                        // In the report/[id] page, we need to check if the current user owns the sighting report
+                        if (sightingReport.reportedBy && sightingReport.reportedBy.toString() === currentUserId) {
+                            // console.log('Cannot send alert to own sighting report (report/[id] page, reverse case)');
+                            return ApiResponse.error(res, {
+                                statusCode: 400,
+                                message: 'Cannot send alert to your own sighting report'
+                            });
+                        }
                     }
                 } else {
                     // console.log('No matching documents found');
@@ -583,9 +626,10 @@ export const sendMatchAlert = async (req, res) => {
         const matchData = {
             missingPersonId: missingPerson ? missingPerson._id.toString() : null,
             sightingReportId: sightingReport ? sightingReport._id.toString() : null,
-            matchId: matchId.toString(),
-            sourceId: missingPersonId.toString(),
-            alertSentBy: currentUserId // Store who sent the alert for later notification
+            matchId: actualMatchId.toString(),
+            sourceId: actualMissingPersonId.toString(),
+            alertSentBy: currentUserId, // Store who sent the alert for later notification
+            source: source || 'report' // Store the source page for reference
         };
 
         // console.log('Match data:', matchData);

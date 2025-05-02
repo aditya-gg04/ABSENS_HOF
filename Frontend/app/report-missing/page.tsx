@@ -10,6 +10,7 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { Input } from "@/components/ui/input";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
+import { toast } from "sonner";
 
 interface SightingReport {
   _id: string;
@@ -53,14 +54,20 @@ export default function AllReportedSightingsPage() {
             const data = await response.json();
             setReports(data.data);
           } else {
-            console.error("Failed to fetch sighting reports");
+            // console.error("Failed to fetch sighting reports");
+            toast.error("Error", {
+              description: "Failed to fetch sighting reports. Please try again."
+            });
           }
         } else {
           // If not logged in, redirect to login page
           router.push("/login");
         }
       } catch (error) {
-        console.error("Error fetching sighting reports:", error);
+        // console.error("Error fetching sighting reports:", error);
+        toast.error("Error", {
+          description: "An error occurred while fetching sighting reports. Please try again."
+        });
       } finally {
         setIsLoading(false);
       }

@@ -12,6 +12,7 @@ import { AlertTriangle } from "lucide-react";
 import { setUser } from "@/lib/slices/authSlice";
 import { ErrorDisplay } from "@/components/ui/error-display";
 import { ErrorType } from "@/utils/errorHandler";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -47,9 +48,14 @@ export default function LoginPage() {
       );
 
       const data = await response.json();
-      console.log("Login response:", data); // For debugging
+      // console.log("Login response:", data); // For debugging
 
       if (data.success) {
+        // Show success toast
+        toast.success("Login Successful", {
+          description: "Welcome back to ABSENS!"
+        });
+
         // Save user object and tokens in localStorage.
         localStorage.setItem("user", JSON.stringify(data.data.user));
         localStorage.setItem("accessToken", data.data.accessToken);
@@ -108,7 +114,10 @@ export default function LoginPage() {
           type: ErrorType.UNKNOWN
         });
       }
-      console.error("Login error:", err);
+      // console.error("Login error:", err);
+      toast.error("Login Error", {
+        description: "An error occurred during login. Please try again."
+      });
     } finally {
       setIsLoading(false);
     }
@@ -142,6 +151,9 @@ export default function LoginPage() {
             .then(({ data, response }) => {
               setIsLoading(false);
               if (data.success) {
+                toast.success("Login Successful", {
+                  description: "Welcome back to ABSENS!"
+                });
                 localStorage.setItem("user", JSON.stringify(data.data.user));
                 localStorage.setItem("accessToken", data.data.accessToken);
                 localStorage.setItem("refreshToken", data.data.refreshToken);
@@ -183,6 +195,9 @@ export default function LoginPage() {
             })
             .catch(() => {
               setIsLoading(false);
+              toast.error("Connection Error", {
+                description: "An error occurred while connecting to the server. Please try again."
+              });
               setError({
                 message: "An error occurred while connecting to the server. Please try again.",
                 type: ErrorType.UNKNOWN

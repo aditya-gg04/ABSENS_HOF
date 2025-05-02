@@ -10,7 +10,6 @@ import type React from "react";
 import { ClientProviders } from "@/components/ClientProviders";
 import RefreshTokenProvider from "@/components/RefreshTokenProvider";
 import PageErrorBoundary from "@/components/PageErrorBoundary";
-
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
@@ -22,7 +21,7 @@ export const metadata: Metadata = {
   title: "Absens",
   description: "AI-Powered Solution for Finding Missing Persons!",
   icons: {
-    icon: "Frontend/app/favicon.ico",
+    icon: '/favicon.ico',
   },
   viewport: {
     width: "device-width",
