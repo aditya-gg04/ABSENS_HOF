@@ -1,0 +1,19 @@
+services:
+  backend:
+    build: ./Backend
+    container_name: absens-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./Backend/.env
+    environment:
+      FRONTEND_URL: "http://frontend:3000"
+  frontend:
+    build: ./Frontend
+    container_name: absens-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./Frontend/.env
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: "http://localhost:8080/api/v1"
